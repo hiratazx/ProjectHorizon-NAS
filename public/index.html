@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProjectHorizon - Dashboard</title>
+    <meta name="description" content="TrueNAS-inspired NAS Dashboard for Linux">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M2 12h20"/>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                    <span class="logo-text">Horizon</span>
+                </div>
+            </div>
+            
+            <nav class="nav">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="storage">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                    </svg>
+                    <span>Storage</span>
+                </a>
+                <a href="#" class="nav-item" data-page="docker">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+                    </svg>
+                    <span>Containers</span>
+                </a>
+                <a href="#" class="nav-item" data-page="files">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span>Files</span>
+                </a>
+                <a href="#" class="nav-item" data-page="network">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+                        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+                        <line x1="6" y1="6" x2="6.01" y2="6"/>
+                        <line x1="6" y1="18" x2="6.01" y2="18"/>
+                    </svg>
+                    <span>Network</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="#" class="nav-item" data-page="settings">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    <span>Settings</span>
+                </a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <div class="header-left">
+                    <button class="menu-toggle" id="menuToggle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <line x1="3" y1="18" x2="21" y2="18"/>
+                        </svg>
+                    </button>
+                    <h1 class="page-title" id="pageTitle">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <span class="hostname" id="hostname">Loading...</span>
+                    <div class="status-indicator online"></div>
+                </div>
+            </header>
+            
+            <!-- Dashboard Page -->
+            <div class="page active" id="page-dashboard">
+                <div class="widgets-grid">
+                    <!-- System Info Widget -->
+                    <div class="widget system-widget">
+                        <div class="widget-header">
+                            <h2 class="widget-title">System Information</h2>
+                            <span class="widget-badge" id="systemUptime">--</span>
+                        </div>
+                        <div class="widget-content">
+                            <div class="system-info-grid">
+                                <div class="info-item">
+                                    <span class="info-label">Platform</span>
+                                    <span class="info-value" id="systemPlatform">--</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">OS</span>
+                                    <span class="info-value" id="systemOS">--</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Kernel</span>
+                                    <span class="info-value" id="systemKernel">--</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Architecture</span>
+                                    <span class="info-value" id="systemArch">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- CPU Widget -->
+                    <div class="widget cpu-widget">
+                        <div class="widget-header">
+                            <h2 class="widget-title">CPU</h2>
+                            <span class="widget-value" id="cpuUsage">--%</span>
+                        </div>
+                        <div class="widget-content">
+                            <div class="progress-ring-container">
+                                <svg class="progress-ring" viewBox="0 0 120 120">
+                                    <circle class="progress-ring-bg" cx="60" cy="60" r="52"/>
+                                    <circle class="progress-ring-fill cpu-ring" id="cpuRing" cx="60" cy="60" r="52"/>
+                                </svg>
+                                <div class="progress-ring-text">
+                                    <span class="ring-value" id="cpuRingValue">0</span>
+                                    <span class="ring-label">%</span>
+                                </div>
+                            </div>
+                            <div class="cpu-cores" id="cpuCores"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Memory Widget -->
+                    <div class="widget memory-widget">
+                        <div class="widget-header">
+                            <h2 class="widget-title">Memory</h2>
+                            <span class="widget-value" id="memUsage">--%</span>
+                        </div>
+                        <div class="widget-content">
+                            <div class="progress-ring-container">
+                                <svg class="progress-ring" viewBox="0 0 120 120">
+                                    <circle class="progress-ring-bg" cx="60" cy="60" r="52"/>
+                                    <circle class="progress-ring-fill memory-ring" id="memRing" cx="60" cy="60" r="52"/>
+                                </svg>
+                                <div class="progress-ring-text">
+                                    <span class="ring-value" id="memRingValue">0</span>
+                                    <span class="ring-label">%</span>
+                                </div>
+                            </div>
+                            <div class="memory-details">
+                                <div class="mem-item">
+                                    <span class="mem-label">Used</span>
+                                    <span class="mem-value" id="memUsed">--</span>
+                                </div>
+                                <div class="mem-item">
+                                    <span class="mem-label">Total</span>
+                                    <span class="mem-value" id="memTotal">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Storage Widget -->
+                    <div class="widget storage-widget wide">
+                        <div class="widget-header">
+                            <h2 class="widget-title">Storage</h2>
+                        </div>
+                        <div class="widget-content">
+                            <div class="storage-list" id="storageList">
+                                <div class="loading-spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Docker Widget -->
+                    <div class="widget docker-widget">
+                        <div class="widget-header">
+                            <h2 class="widget-title">Docker</h2>
+                        </div>
+                        <div class="widget-content">
+                            <div class="docker-stats">
+                                <div class="docker-stat">
+                                    <span class="docker-stat-value" id="dockerRunning">-</span>
+                                    <span class="docker-stat-label">Running</span>
+                                </div>
+                                <div class="docker-stat">
+                                    <span class="docker-stat-value" id="dockerStopped">-</span>
+                                    <span class="docker-stat-label">Stopped</span>
+                                </div>
+                                <div class="docker-stat">
+                                    <span class="docker-stat-value" id="dockerImages">-</span>
+                                    <span class="docker-stat-label">Images</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Network Widget -->
+                    <div class="widget network-widget">
+                        <div class="widget-header">
+                            <h2 class="widget-title">Network</h2>
+                        </div>
+                        <div class="widget-content">
+                            <div class="network-interfaces" id="networkInterfaces">
+                                <div class="loading-spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Storage Page -->
+            <div class="page" id="page-storage">
+                <div class="page-content">
+                    <div class="card">
+                        <h2>Storage Pools</h2>
+                        <div class="storage-pools" id="storagePools">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Docker Page -->
+            <div class="page" id="page-docker">
+                <div class="page-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Containers</h2>
+                            <button class="btn btn-primary" onclick="refreshContainers()">Refresh</button>
+                        </div>
+                        <div class="containers-list" id="containersList">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Files Page -->
+            <div class="page" id="page-files">
+                <div class="page-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>File Browser</h2>
+                            <div class="breadcrumb" id="fileBreadcrumb"></div>
+                        </div>
+                        <div class="files-list" id="filesList">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Network Page -->
+            <div class="page" id="page-network">
+                <div class="page-content">
+                    <div class="card">
+                        <h2>Network Interfaces</h2>
+                        <div class="network-list" id="networkList">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Settings Page -->
+            <div class="page" id="page-settings">
+                <div class="page-content">
+                    <div class="card">
+                        <h2>Settings</h2>
+                        <p>Settings page coming soon...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="js/app.js"></script>
+</body>
+</html>
