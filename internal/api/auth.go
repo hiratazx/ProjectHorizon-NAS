@@ -1,8 +1,13 @@
 package api
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -10,8 +15,55 @@ import (
 	"github.com/projecthorizon/horizon/internal/models"
 )
 
-// JWT secret - in production, use environment variable
-var jwtSecret = []byte("projecthorizon-secret-key-change-in-production")
+// JWT secret - loaded or generated per installation
+var (
+	jwtSecret     []byte
+	jwtSecretOnce sync.Once
+)
+
+// getJWTSecret returns the JWT secret, generating one if needed
+func getJWTSecret() []byte {
+	jwtSecretOnce.Do(func() {
+		// Try to load from file
+		paths := []string{
+			"/etc/projecthorizon/jwt.key",
+			"config/jwt.key",
+		}
+		
+		for _, p := range paths {
+			data, err := os.ReadFile(p)
+			if err == nil && len(data) >= 32 {
+				jwtSecret = data
+				return
+			}
+		}
+		
+		// Generate new secret
+		jwtSecret = make([]byte, 32)
+		if _, err := rand.Read(jwtSecret); err != nil {
+			// Fallback to hex-encoded random string
+			jwtSecret = []byte(generateRandomHex(32))
+		}
+		
+		// Save to first writable path
+		for _, p := range paths {
+			dir := filepath.Dir(p)
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				continue
+			}
+			if err := os.WriteFile(p, jwtSecret, 0600); err == nil {
+				break
+			}
+		}
+	})
+	return jwtSecret
+}
+
+func generateRandomHex(n int) string {
+	bytes := make([]byte, n)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
 
 // Claims for JWT
 type Claims struct {
@@ -274,7 +326,7 @@ func generateToken(user *models.User) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(getJWTSecret())
 }
 
 // validateToken validates JWT and returns claims
@@ -282,7 +334,7 @@ func validateToken(tokenString string) (*Claims, error) {
 	claims := &Claims{}
 
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return jwtSecret, nil
+		return getJWTSecret(), nil
 	})
 
 	if err != nil || !token.Valid {
