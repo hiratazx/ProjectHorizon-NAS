@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,94 +11,164 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
-    <div class="app">
+    <!-- Login Modal -->
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-modal">
+            <div class="auth-logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M2 12h20" />
+                    <path
+                        d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                </svg>
+                <h1>ProjectHorizon</h1>
+            </div>
+
+            <!-- Setup Form (first time) -->
+            <form class="auth-form" id="setupForm" style="display: none;">
+                <h2>Create Admin Account</h2>
+                <p class="auth-subtitle">Set up your administrator credentials</p>
+                <div class="form-group">
+                    <label for="setupUsername">Username</label>
+                    <input type="text" id="setupUsername" required minlength="3" placeholder="admin">
+                </div>
+                <div class="form-group">
+                    <label for="setupPassword">Password</label>
+                    <input type="password" id="setupPassword" required minlength="6" placeholder="Min 6 characters">
+                </div>
+                <div class="form-group">
+                    <label for="setupConfirm">Confirm Password</label>
+                    <input type="password" id="setupConfirm" required placeholder="Confirm password">
+                </div>
+                <div class="form-error" id="setupError"></div>
+                <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+            </form>
+
+            <!-- Login Form -->
+            <form class="auth-form" id="loginForm" style="display: none;">
+                <h2>Welcome Back</h2>
+                <p class="auth-subtitle">Sign in to your account</p>
+                <div class="form-group">
+                    <label for="loginUsername">Username</label>
+                    <input type="text" id="loginUsername" required placeholder="Username">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" required placeholder="Password">
+                </div>
+                <div class="form-error" id="loginError"></div>
+                <button type="submit" class="btn btn-primary btn-full">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="app" id="mainApp" style="display: none;">
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
                     <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M2 12h20"/>
-                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M2 12h20" />
+                        <path
+                            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                     </svg>
                     <span class="logo-text">Horizon</span>
                 </div>
             </div>
-            
+
             <nav class="nav">
                 <a href="#" class="nav-item active" data-page="dashboard">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="3" width="7" height="7"/>
-                        <rect x="14" y="3" width="7" height="7"/>
-                        <rect x="14" y="14" width="7" height="7"/>
-                        <rect x="3" y="14" width="7" height="7"/>
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="14" y="14" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
                     </svg>
                     <span>Dashboard</span>
                 </a>
                 <a href="#" class="nav-item" data-page="storage">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
-                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                        <ellipse cx="12" cy="5" rx="9" ry="3" />
+                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
                     </svg>
                     <span>Storage</span>
                 </a>
                 <a href="#" class="nav-item" data-page="docker">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+                        <path
+                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                        <line x1="12" y1="22.08" x2="12" y2="12" />
                     </svg>
                     <span>Containers</span>
                 </a>
                 <a href="#" class="nav-item" data-page="files">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                     </svg>
                     <span>Files</span>
                 </a>
                 <a href="#" class="nav-item" data-page="network">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
-                        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-                        <line x1="6" y1="6" x2="6.01" y2="6"/>
-                        <line x1="6" y1="18" x2="6.01" y2="18"/>
+                        <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+                        <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+                        <line x1="6" y1="6" x2="6.01" y2="6" />
+                        <line x1="6" y1="18" x2="6.01" y2="18" />
                     </svg>
                     <span>Network</span>
                 </a>
             </nav>
-            
+
             <div class="sidebar-footer">
                 <a href="#" class="nav-item" data-page="settings">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                     </svg>
                     <span>Settings</span>
                 </a>
             </div>
         </aside>
-        
+
         <!-- Main Content -->
         <main class="main-content">
             <header class="header">
                 <div class="header-left">
                     <button class="menu-toggle" id="menuToggle">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="3" y1="12" x2="21" y2="12"/>
-                            <line x1="3" y1="6" x2="21" y2="6"/>
-                            <line x1="3" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="12" x2="21" y2="12" />
+                            <line x1="3" y1="6" x2="21" y2="6" />
+                            <line x1="3" y1="18" x2="21" y2="18" />
                         </svg>
                     </button>
                     <h1 class="page-title" id="pageTitle">Dashboard</h1>
                 </div>
                 <div class="header-right">
                     <span class="hostname" id="hostname">Loading...</span>
+                    <div class="user-menu">
+                        <button class="user-btn" id="userMenuBtn">
+                            <span class="user-name" id="currentUsername">User</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16"
+                                height="16">
+                                <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                        </button>
+                        <div class="user-dropdown" id="userDropdown">
+                            <div class="user-info">
+                                <span class="user-role" id="currentRole">Admin</span>
+                            </div>
+                            <button class="dropdown-item" onclick="logout()">Sign Out</button>
+                        </div>
+                    </div>
                     <div class="status-indicator online"></div>
                 </div>
             </header>
-            
+
             <!-- Dashboard Page -->
             <div class="page active" id="page-dashboard">
                 <div class="widgets-grid">
@@ -128,7 +199,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- CPU Widget -->
                     <div class="widget cpu-widget">
                         <div class="widget-header">
@@ -138,8 +209,8 @@
                         <div class="widget-content">
                             <div class="progress-ring-container">
                                 <svg class="progress-ring" viewBox="0 0 120 120">
-                                    <circle class="progress-ring-bg" cx="60" cy="60" r="52"/>
-                                    <circle class="progress-ring-fill cpu-ring" id="cpuRing" cx="60" cy="60" r="52"/>
+                                    <circle class="progress-ring-bg" cx="60" cy="60" r="52" />
+                                    <circle class="progress-ring-fill cpu-ring" id="cpuRing" cx="60" cy="60" r="52" />
                                 </svg>
                                 <div class="progress-ring-text">
                                     <span class="ring-value" id="cpuRingValue">0</span>
@@ -149,7 +220,7 @@
                             <div class="cpu-cores" id="cpuCores"></div>
                         </div>
                     </div>
-                    
+
                     <!-- Memory Widget -->
                     <div class="widget memory-widget">
                         <div class="widget-header">
@@ -159,8 +230,9 @@
                         <div class="widget-content">
                             <div class="progress-ring-container">
                                 <svg class="progress-ring" viewBox="0 0 120 120">
-                                    <circle class="progress-ring-bg" cx="60" cy="60" r="52"/>
-                                    <circle class="progress-ring-fill memory-ring" id="memRing" cx="60" cy="60" r="52"/>
+                                    <circle class="progress-ring-bg" cx="60" cy="60" r="52" />
+                                    <circle class="progress-ring-fill memory-ring" id="memRing" cx="60" cy="60"
+                                        r="52" />
                                 </svg>
                                 <div class="progress-ring-text">
                                     <span class="ring-value" id="memRingValue">0</span>
@@ -179,7 +251,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Storage Widget -->
                     <div class="widget storage-widget wide">
                         <div class="widget-header">
@@ -191,7 +263,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Docker Widget -->
                     <div class="widget docker-widget">
                         <div class="widget-header">
@@ -214,7 +286,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Network Widget -->
                     <div class="widget network-widget">
                         <div class="widget-header">
@@ -228,7 +300,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Storage Page -->
             <div class="page" id="page-storage">
                 <div class="page-content">
@@ -240,7 +312,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Docker Page -->
             <div class="page" id="page-docker">
                 <div class="page-content">
@@ -255,7 +327,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Files Page -->
             <div class="page" id="page-files">
                 <div class="page-content">
@@ -270,7 +342,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Network Page -->
             <div class="page" id="page-network">
                 <div class="page-content">
@@ -282,19 +354,112 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Settings Page -->
             <div class="page" id="page-settings">
                 <div class="page-content">
-                    <div class="card">
-                        <h2>Settings</h2>
-                        <p>Settings page coming soon...</p>
+                    <!-- Volumes Section -->
+                    <div class="card" style="margin-bottom: 24px;">
+                        <div class="card-header">
+                            <h2>Storage Volumes</h2>
+                            <button class="btn btn-primary" onclick="showAddVolumeModal()">Add Volume</button>
+                        </div>
+                        <div class="volumes-list" id="volumesList">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+
+                    <!-- Users Section (Admin only) -->
+                    <div class="card" id="usersSection" style="display: none;">
+                        <div class="card-header">
+                            <h2>User Management</h2>
+                            <button class="btn btn-primary" onclick="showAddUserModal()">Add User</button>
+                        </div>
+                        <div class="users-list" id="usersList">
+                            <div class="loading-spinner"></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
     </div>
-    
+
+    <!-- Add Volume Modal -->
+    <div class="modal-overlay" id="volumeModal" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Add Volume</h3>
+                <button class="modal-close" onclick="closeVolumeModal()">&times;</button>
+            </div>
+            <form id="volumeForm">
+                <div class="form-group">
+                    <label for="volumeName">Name</label>
+                    <input type="text" id="volumeName" required placeholder="My Storage">
+                </div>
+                <div class="form-group">
+                    <label for="hostPath">Source Path (Host)</label>
+                    <input type="text" id="hostPath" required placeholder="/home/user/data">
+                </div>
+                <div class="form-group">
+                    <label for="mountPath">Target Path (NAS)</label>
+                    <input type="text" id="mountPath" required placeholder="/media/data">
+                </div>
+                <div class="form-group">
+                    <label for="volumeMode">Access Mode</label>
+                    <select id="volumeMode">
+                        <option value="rw">Read-Write</option>
+                        <option value="ro">Read-Only</option>
+                    </select>
+                </div>
+                <div class="form-error" id="volumeError"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeVolumeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Volume</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div class="modal-overlay" id="userModal" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Add User</h3>
+                <button class="modal-close" onclick="closeUserModal()">&times;</button>
+            </div>
+            <form id="userForm">
+                <div class="form-group">
+                    <label for="newUsername">Username</label>
+                    <input type="text" id="newUsername" required minlength="3" placeholder="username">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">Password</label>
+                    <input type="password" id="newPassword" required minlength="6" placeholder="Min 6 characters">
+                </div>
+                <div class="form-group">
+                    <label for="userRole">Role</label>
+                    <select id="userRole">
+                        <option value="admin">Admin</option>
+                        <option value="user">User</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="userPerm">Permission</label>
+                    <select id="userPerm">
+                        <option value="read-write">Read-Write</option>
+                        <option value="read-only">Read-Only</option>
+                    </select>
+                </div>
+                <div class="form-error" id="userError"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="js/app.js"></script>
 </body>
+
 </html>
