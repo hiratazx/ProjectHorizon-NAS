@@ -9,17 +9,162 @@ const API_BASE = '/api';
 // State
 let currentPath = '/media';
 let refreshInterval = null;
+let currentUser = null;
 
 // ============================================
 // Initialization
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    initAuthForms();
+    checkAuth();
+});
+
+async function checkAuth() {
+    try {
+        const response = await fetch(`${API_BASE}/auth/check`, {
+            headers: getAuthHeaders()
+        });
+        const data = await response.json();
+
+        if (data.setupRequired) {
+            showSetupForm();
+        } else if (!data.authenticated) {
+            showLoginForm();
+        } else {
+            currentUser = data.user;
+            showApp();
+        }
+    } catch (error) {
+        console.error('Auth check failed:', error);
+        showLoginForm();
+    }
+}
+
+function showSetupForm() {
+    document.getElementById('authOverlay').style.display = 'flex';
+    document.getElementById('setupForm').style.display = 'block';
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'none';
+}
+
+function showLoginForm() {
+    document.getElementById('authOverlay').style.display = 'flex';
+    document.getElementById('setupForm').style.display = 'none';
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('mainApp').style.display = 'none';
+}
+
+function showApp() {
+    document.getElementById('authOverlay').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'flex';
+
+    // Update user info in header
+    if (currentUser) {
+        document.getElementById('currentUsername').textContent = currentUser.username;
+        document.getElementById('currentRole').textContent = currentUser.role.toUpperCase();
+
+        // Show user management for admins
+        if (currentUser.role === 'admin') {
+            const usersSection = document.getElementById('usersSection');
+            if (usersSection) usersSection.style.display = 'block';
+        }
+    }
+
     initNavigation();
     initSidebar();
+    initUserMenu();
     loadDashboard();
     startAutoRefresh();
-});
+}
+
+function initAuthForms() {
+    // Setup form
+    document.getElementById('setupForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('setupUsername').value;
+        const password = document.getElementById('setupPassword').value;
+        const confirm = document.getElementById('setupConfirm').value;
+
+        if (password !== confirm) {
+            document.getElementById('setupError').textContent = 'Passwords do not match';
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/auth/setup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Setup failed');
+            }
+
+            localStorage.setItem('token', data.token);
+            currentUser = data.user;
+            showApp();
+        } catch (error) {
+            document.getElementById('setupError').textContent = error.message;
+        }
+    });
+
+    // Login form
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+
+        try {
+            const response = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Login failed');
+            }
+
+            localStorage.setItem('token', data.token);
+            currentUser = data.user;
+            showApp();
+        } catch (error) {
+            document.getElementById('loginError').textContent = error.message;
+        }
+    });
+}
+
+function logout() {
+    localStorage.removeItem('token');
+    currentUser = null;
+    if (refreshInterval) clearInterval(refreshInterval);
+    showLoginForm();
+}
+
+function getAuthHeaders() {
+    const token = localStorage.getItem('token');
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
+function initUserMenu() {
+    const btn = document.getElementById('userMenuBtn');
+    const dropdown = document.getElementById('userDropdown');
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('open');
+    });
+
+    document.addEventListener('click', () => {
+        dropdown.classList.remove('open');
+    });
+}
 
 // ============================================
 // Navigation
@@ -90,6 +235,9 @@ function loadPageData(page) {
             break;
         case 'network':
             loadNetworkPage();
+            break;
+        case 'settings':
+            loadSettingsPage();
             break;
     }
 }
@@ -540,12 +688,19 @@ async function fetchAPI(endpoint, options = {}) {
         ...options,
         headers: {
             'Content-Type': 'application/json',
+            ...getAuthHeaders(),
             ...options.headers
         }
     });
 
+    if (response.status === 401) {
+        logout();
+        throw new Error('Session expired');
+    }
+
     if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `API Error: ${response.status}`);
     }
 
     return response.json();
@@ -582,3 +737,166 @@ function formatDate(timestamp) {
     const date = new Date(timestamp * 1000);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
+
+// ============================================
+// Settings Page
+// ============================================
+
+async function loadSettingsPage() {
+    loadVolumes();
+    if (currentUser && currentUser.role === 'admin') {
+        loadUsers();
+    }
+}
+
+async function loadVolumes() {
+    try {
+        const volumes = await fetchAPI('/settings/volumes');
+        const container = document.getElementById('volumesList');
+
+        if (!volumes || volumes.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No volumes configured. Click "Add Volume" to add one.</p>';
+            return;
+        }
+
+        container.innerHTML = volumes.map(vol => `
+            <div class="volume-item">
+                <div class="volume-info">
+                    <div class="volume-name">${vol.name}</div>
+                    <div class="volume-paths">
+                        <span><strong>Host:</strong> ${vol.hostPath}</span>
+                        <span><strong>NAS:</strong> ${vol.mountPath}</span>
+                        <span class="badge ${vol.mode === 'rw' ? 'badge-rw' : 'badge-ro'}">${vol.mode === 'rw' ? 'Read-Write' : 'Read-Only'}</span>
+                    </div>
+                </div>
+                <div class="volume-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="deleteVolume('${vol.id}')">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Failed to load volumes:', error);
+        document.getElementById('volumesList').innerHTML = '<p style="color: var(--text-secondary);">Failed to load volumes</p>';
+    }
+}
+
+async function loadUsers() {
+    try {
+        const users = await fetchAPI('/users');
+        const container = document.getElementById('usersList');
+
+        if (!users || users.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-secondary);">No users found</p>';
+            return;
+        }
+
+        container.innerHTML = users.map(user => `
+            <div class="user-item">
+                <div class="user-info-row">
+                    <div class="user-name-cell">${user.username}</div>
+                    <div class="user-details">
+                        <span class="badge ${user.role === 'admin' ? 'badge-admin' : 'badge-user'}">${user.role}</span>
+                        <span class="badge ${user.permission === 'read-write' ? 'badge-rw' : 'badge-ro'}">${user.permission}</span>
+                    </div>
+                </div>
+                ${currentUser && currentUser.id !== user.id ? `
+                    <div class="user-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="deleteUser('${user.id}')">Delete</button>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Failed to load users:', error);
+        document.getElementById('usersList').innerHTML = '<p style="color: var(--text-secondary);">Failed to load users</p>';
+    }
+}
+
+// Volume Modal
+function showAddVolumeModal() {
+    document.getElementById('volumeModal').style.display = 'flex';
+    document.getElementById('volumeForm').reset();
+    document.getElementById('volumeError').textContent = '';
+}
+
+function closeVolumeModal() {
+    document.getElementById('volumeModal').style.display = 'none';
+}
+
+document.getElementById('volumeForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const data = {
+        name: document.getElementById('volumeName').value,
+        hostPath: document.getElementById('hostPath').value,
+        mountPath: document.getElementById('mountPath').value,
+        mode: document.getElementById('volumeMode').value
+    };
+
+    try {
+        await fetchAPI('/settings/volumes', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        closeVolumeModal();
+        loadVolumes();
+    } catch (error) {
+        document.getElementById('volumeError').textContent = error.message;
+    }
+});
+
+async function deleteVolume(id) {
+    if (!confirm('Are you sure you want to delete this volume?')) return;
+
+    try {
+        await fetchAPI(`/settings/volumes/${id}`, { method: 'DELETE' });
+        loadVolumes();
+    } catch (error) {
+        alert('Failed to delete volume: ' + error.message);
+    }
+}
+
+// User Modal
+function showAddUserModal() {
+    document.getElementById('userModal').style.display = 'flex';
+    document.getElementById('userForm').reset();
+    document.getElementById('userError').textContent = '';
+}
+
+function closeUserModal() {
+    document.getElementById('userModal').style.display = 'none';
+}
+
+document.getElementById('userForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const data = {
+        username: document.getElementById('newUsername').value,
+        password: document.getElementById('newPassword').value,
+        role: document.getElementById('userRole').value,
+        permission: document.getElementById('userPerm').value
+    };
+
+    try {
+        await fetchAPI('/users', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        closeUserModal();
+        loadUsers();
+    } catch (error) {
+        document.getElementById('userError').textContent = error.message;
+    }
+});
+
+async function deleteUser(id) {
+    if (!confirm('Are you sure you want to delete this user?')) return;
+
+    try {
+        await fetchAPI(`/users/${id}`, { method: 'DELETE' });
+        loadUsers();
+    } catch (error) {
+        alert('Failed to delete user: ' + error.message);
+    }
+}
+
