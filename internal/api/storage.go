@@ -17,7 +17,6 @@ func RegisterStorageRoutes(rg *gin.RouterGroup) {
 	{
 		storage.GET("/disks", getDisks)
 		storage.GET("/usage", getFilesystemUsage)
-		storage.GET("/volumes", getVolumes)
 		storage.GET("/browse", browseDirectory)
 		storage.POST("/mkdir", createDirectory)
 		storage.DELETE("/delete", deleteItem)
@@ -30,13 +29,6 @@ type StorageConfig struct {
 	Settings struct {
 		DefaultPath string `json:"defaultPath"`
 	} `json:"settings"`
-}
-
-type Volume struct {
-	Name     string `json:"name"`
-	HostPath string `json:"hostPath"`
-	MountPath string `json:"mountPath"`
-	Mode     string `json:"mode"`
 }
 
 const configPath = "/etc/projecthorizon/config/storage.json"
@@ -129,16 +121,6 @@ func getFilesystemUsage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
-}
-
-func getVolumes(c *gin.Context) {
-	config, err := loadStorageConfig()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, config.Volumes)
 }
 
 // FileItem represents a file or directory
