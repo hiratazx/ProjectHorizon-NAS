@@ -29,9 +29,14 @@ func main() {
 	// API routes
 	apiGroup := router.Group("/api")
 	{
+		// Public routes
+		api.RegisterAuthRoutes(apiGroup)
+
+		// Protected routes (auth middleware applied inside)
 		api.RegisterSystemRoutes(apiGroup)
 		api.RegisterDockerRoutes(apiGroup)
 		api.RegisterStorageRoutes(apiGroup)
+		api.RegisterSettingsRoutes(apiGroup)
 	}
 
 	// Serve static files - try multiple locations
