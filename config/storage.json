@@ -1,13 +1,21 @@
 {
-    "volumes": [
-        {
-            "name": "Main Storage",
-            "hostPath": "/home/itzkaguya/truenas-clone-disks",
-            "mountPath": "/media",
-            "mode": "rw"
-        }
-    ],
-    "settings": {
-        "defaultPath": "/media"
+  "volumes": [
+    {
+      "id": "",
+      "name": "Main Storage",
+      "hostPath": "/home/itzkaguya/truenas-clone-disks",
+      "mountPath": "/media",
+      "mode": "rw"
+    },
+    {
+      "id": "vol-abcdefgh",
+      "name": "Main",
+      "hostPath": "/home/itzkaguya",
+      "mountPath": "/media/itzkaguya",
+      "mode": "rw"
     }
+  ],
+  "settings": {
+    "defaultPath": "/media"
+  }
 }
