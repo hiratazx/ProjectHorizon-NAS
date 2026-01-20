@@ -1,4 +1,4 @@
-module github.com/projecthorizon/horizon
+module github.com/hiratazx/projecthorizon
 
 go 1.24.0
 
@@ -7,9 +7,7 @@ toolchain go1.24.12
 require (
 	github.com/docker/docker v25.0.0+incompatible
 	github.com/gin-gonic/gin v1.9.1
-	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/shirou/gopsutil/v3 v3.23.11
-	golang.org/x/crypto v0.47.0
 )
 
 require (
@@ -32,6 +30,7 @@ require (
 	github.com/go-playground/validator/v10 v10.14.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
@@ -60,6 +59,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	golang.org/x/arch v0.3.0 // indirect
+	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/mod v0.31.0 // indirect
 	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect

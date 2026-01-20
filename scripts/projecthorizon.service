@@ -1,6 +1,6 @@
 [Unit]
 Description=ProjectHorizon NAS Dashboard
-Documentation=https://github.com/projecthorizon/horizon
+Documentation=https://github.com/hiratazx/projecthorizon
 After=network.target docker.service
 Wants=docker.service
 

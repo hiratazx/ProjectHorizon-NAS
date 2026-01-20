@@ -12,7 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/projecthorizon/horizon/internal/models"
+	"github.com/hiratazx/projecthorizon/internal/models"
 )
 
 // JWT secret - loaded or generated per installation

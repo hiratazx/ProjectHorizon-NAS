@@ -9,7 +9,7 @@
 #                     H O R I Z O N
 #
 # ProjectHorizon Installation Script
-# https://github.com/projecthorizon/horizon
+# https://github.com/hiratazx/projecthorizon
 #
 
 set -e
@@ -28,7 +28,7 @@ INSTALL_PREFIX="/usr/local"
 CONFIG_DIR="/etc/projecthorizon"
 DATA_DIR="/var/lib/projecthorizon"
 SERVICE_NAME="projecthorizon"
-GITHUB_REPO="projecthorizon/horizon"
+GITHUB_REPO="hiratazx/projecthorizon"
 ARCH=$(uname -m)
 
 # Helper functions
@@ -215,7 +215,7 @@ install_service() {
     cat > /etc/systemd/system/${SERVICE_NAME}.service << 'EOF'
 [Unit]
 Description=ProjectHorizon NAS Dashboard
-Documentation=https://github.com/projecthorizon/horizon
+Documentation=https://github.com/hiratazx/projecthorizon
 After=network.target docker.service
 Wants=docker.service
 

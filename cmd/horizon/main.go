@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/projecthorizon/horizon/internal/api"
+	"github.com/hiratazx/projecthorizon/internal/api"
 )
 
 var Version = "dev"
