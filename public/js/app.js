@@ -17,8 +17,16 @@ let currentUser = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initAuthForms();
+    initOnboarding();
     checkAuth();
 });
+
+// Onboarding state
+let currentOnboardingStep = 1;
+let onboardingData = {
+    account: null,
+    volume: null
+};
 
 async function checkAuth() {
     try {
@@ -28,7 +36,7 @@ async function checkAuth() {
         const data = await response.json();
 
         if (data.setupRequired) {
-            showSetupForm();
+            showOnboarding();
         } else if (!data.authenticated) {
             showLoginForm();
         } else {
@@ -41,17 +49,19 @@ async function checkAuth() {
     }
 }
 
-function showSetupForm() {
+function showOnboarding() {
     document.getElementById('authOverlay').style.display = 'flex';
-    document.getElementById('setupForm').style.display = 'block';
-    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('onboardingContainer').style.display = 'block';
+    document.getElementById('loginModal').style.display = 'none';
     document.getElementById('mainApp').style.display = 'none';
+    currentOnboardingStep = 1;
+    updateOnboardingUI();
 }
 
 function showLoginForm() {
     document.getElementById('authOverlay').style.display = 'flex';
-    document.getElementById('setupForm').style.display = 'none';
-    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('onboardingContainer').style.display = 'none';
+    document.getElementById('loginModal').style.display = 'block';
     document.getElementById('mainApp').style.display = 'none';
 }
 
@@ -78,16 +88,17 @@ function showApp() {
     startAutoRefresh();
 }
 
-function initAuthForms() {
-    // Setup form
-    document.getElementById('setupForm').addEventListener('submit', async (e) => {
+// Onboarding Navigation
+function initOnboarding() {
+    // Account form
+    document.getElementById('onboardingAccountForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const username = document.getElementById('setupUsername').value;
-        const password = document.getElementById('setupPassword').value;
-        const confirm = document.getElementById('setupConfirm').value;
+        const username = document.getElementById('obUsername').value;
+        const password = document.getElementById('obPassword').value;
+        const confirm = document.getElementById('obConfirm').value;
 
         if (password !== confirm) {
-            document.getElementById('setupError').textContent = 'Passwords do not match';
+            document.getElementById('obAccountError').textContent = 'Passwords do not match';
             return;
         }
 
@@ -106,14 +117,96 @@ function initAuthForms() {
 
             localStorage.setItem('token', data.token);
             currentUser = data.user;
-            showApp();
+            onboardingData.account = { username };
+            nextOnboardingStep();
         } catch (error) {
-            document.getElementById('setupError').textContent = error.message;
+            document.getElementById('obAccountError').textContent = error.message;
         }
     });
 
-    // Login form
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    // Volume form
+    document.getElementById('onboardingVolumeForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('obVolumeName').value;
+        const hostPath = document.getElementById('obHostPath').value;
+        const mountPath = document.getElementById('obMountPath').value;
+
+        if (!hostPath) {
+            document.getElementById('obVolumeError').textContent = 'Host path is required';
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/settings/volumes`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...getAuthHeaders()
+                },
+                body: JSON.stringify({ name, hostPath, mountPath, mode: 'rw' })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to add volume');
+            }
+
+            onboardingData.volume = { name, hostPath };
+            document.getElementById('volumeSummary').style.display = 'flex';
+            document.getElementById('volumeSummaryText').textContent = `Volume "${name}" configured`;
+            nextOnboardingStep();
+        } catch (error) {
+            document.getElementById('obVolumeError').textContent = error.message;
+        }
+    });
+}
+
+function nextOnboardingStep() {
+    if (currentOnboardingStep < 5) {
+        currentOnboardingStep++;
+        updateOnboardingUI();
+    }
+}
+
+function prevOnboardingStep() {
+    if (currentOnboardingStep > 1) {
+        currentOnboardingStep--;
+        updateOnboardingUI();
+    }
+}
+
+function skipVolumeStep() {
+    nextOnboardingStep();
+}
+
+function updateOnboardingUI() {
+    // Update steps visibility
+    for (let i = 1; i <= 5; i++) {
+        const step = document.getElementById(`step${i}`);
+        const progressStep = document.querySelector(`.progress-step[data-step="${i}"]`);
+
+        if (step) {
+            step.classList.toggle('active', i === currentOnboardingStep);
+        }
+        if (progressStep) {
+            progressStep.classList.remove('active', 'completed');
+            if (i === currentOnboardingStep) {
+                progressStep.classList.add('active');
+            } else if (i < currentOnboardingStep) {
+                progressStep.classList.add('completed');
+            }
+        }
+    }
+}
+
+function finishOnboarding() {
+    showApp();
+}
+
+function initAuthForms() {
+    // Login form (for returning users)
+    document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const username = document.getElementById('loginUsername').value;
         const password = document.getElementById('loginPassword').value;
@@ -536,36 +629,110 @@ function refreshContainers() {
 }
 
 // ============================================
-// Files Page
+// Files Page - Volume-Based Browser
 // ============================================
 
-async function loadFilesPage(path = currentPath) {
+let currentVolume = null;
+
+async function loadFilesPage(path = null) {
+    const container = document.getElementById('filesList');
+    const breadcrumb = document.getElementById('fileBreadcrumb');
+
+    // If no path specified and no current volume, show volumes list
+    if (!path && !currentVolume) {
+        try {
+            const volumes = await fetchAPI('/settings/volumes');
+
+            if (!volumes || volumes.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <p style="color: var(--text-secondary); margin-bottom: 16px;">No volumes configured</p>
+                        <button class="btn btn-primary" onclick="navigateTo('settings')">Add Volume in Settings</button>
+                    </div>
+                `;
+                breadcrumb.innerHTML = '<span class="breadcrumb-item">Volumes</span>';
+                return;
+            }
+
+            breadcrumb.innerHTML = '<span class="breadcrumb-item">Volumes</span>';
+
+            container.innerHTML = `
+                <div class="volumes-grid">
+                    ${volumes.map(vol => `
+                        <div class="volume-card" onclick="browseVolume('${vol.id}', '${vol.hostPath}', '${vol.name}')">
+                            <div class="volume-card-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                                </svg>
+                            </div>
+                            <div class="volume-card-name">${vol.name}</div>
+                            <div class="volume-card-path">${vol.hostPath}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } catch (error) {
+            console.error('Failed to load volumes:', error);
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Failed to load volumes</p>';
+        }
+        return;
+    }
+
+    // Browse directory within volume
+    const browsePath = path || (currentVolume ? currentVolume.path : currentPath);
+
     try {
-        const data = await fetchAPI(`/storage/browse?path=${encodeURIComponent(path)}`);
+        const data = await fetchAPI(`/storage/browse?path=${encodeURIComponent(browsePath)}`);
         currentPath = data.currentPath;
 
-        // Update breadcrumb
+        // Update breadcrumb with volume name
         updateBreadcrumb(data.currentPath);
-
-        const container = document.getElementById('filesList');
 
         if (!data.items || data.items.length === 0) {
             container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">Empty directory</p>';
             return;
         }
 
-        // Add parent directory link
+        // Add back to volumes or parent directory link
         let html = '';
-        if (data.parent && data.parent !== data.currentPath) {
+
+        // Check if we're at volume root
+        if (currentVolume && data.currentPath === currentVolume.path) {
             html += `
-                <div class="file-item" onclick="loadFilesPage('${data.parent}')">
+                <div class="file-item" onclick="backToVolumes()">
                     <svg class="file-icon folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                        <path d="M15 18l-6-6 6-6"/>
                     </svg>
-                    <span class="file-name">..</span>
-                    <span class="file-size">Parent Directory</span>
+                    <span class="file-name">Back to Volumes</span>
+                    <span class="file-size"></span>
                 </div>
             `;
+        } else if (data.parent && data.parent !== data.currentPath) {
+            // Don't allow going above volume root
+            const canGoUp = !currentVolume || data.parent.startsWith(currentVolume.path);
+            if (canGoUp) {
+                html += `
+                    <div class="file-item" onclick="loadFilesPage('${data.parent}')">
+                        <svg class="file-icon folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        <span class="file-name">..</span>
+                        <span class="file-size">Parent Directory</span>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="file-item" onclick="backToVolumes()">
+                        <svg class="file-icon folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 18l-6-6 6-6"/>
+                        </svg>
+                        <span class="file-name">Back to Volumes</span>
+                        <span class="file-size"></span>
+                    </div>
+                `;
+            }
         }
 
         html += data.items.map(item => {
@@ -596,26 +763,49 @@ async function loadFilesPage(path = currentPath) {
         container.innerHTML = html;
     } catch (error) {
         console.error('Failed to load files:', error);
-        document.getElementById('filesList').innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Failed to load directory</p>';
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Failed to load directory</p>';
     }
+}
+
+function browseVolume(id, path, name) {
+    currentVolume = { id, path, name };
+    currentPath = path;
+    loadFilesPage(path);
+}
+
+function backToVolumes() {
+    currentVolume = null;
+    currentPath = '/media';
+    loadFilesPage(null);
 }
 
 function updateBreadcrumb(path) {
     const breadcrumb = document.getElementById('fileBreadcrumb');
-    const parts = path.split('/').filter(p => p);
 
-    let currentPath = '';
+    if (!currentVolume) {
+        breadcrumb.innerHTML = '<span class="breadcrumb-item">Volumes</span>';
+        return;
+    }
+
+    // Calculate relative path from volume root
+    const relativePath = path.replace(currentVolume.path, '').replace(/^\//, '');
+    const parts = relativePath ? relativePath.split('/').filter(p => p) : [];
+
+    let currentBuildPath = currentVolume.path;
     const items = parts.map((part, index) => {
-        currentPath += '/' + part;
+        currentBuildPath += '/' + part;
         const isLast = index === parts.length - 1;
         return `
-            <span class="breadcrumb-item" ${isLast ? '' : `onclick="loadFilesPage('${currentPath}')"`} style="cursor: ${isLast ? 'default' : 'pointer'}; ${isLast ? 'color: var(--text-primary)' : ''}">${part}</span>
+            <span class="breadcrumb-item" ${isLast ? '' : `onclick="loadFilesPage('${currentBuildPath}')"`} style="cursor: ${isLast ? 'default' : 'pointer'}; ${isLast ? 'color: var(--text-primary)' : ''}">${part}</span>
             ${isLast ? '' : '<span class="breadcrumb-separator">/</span>'}
         `;
     });
 
     breadcrumb.innerHTML = `
-        <span class="breadcrumb-item" onclick="loadFilesPage('/')" style="cursor: pointer;">/</span>
+        <span class="breadcrumb-item" onclick="backToVolumes()" style="cursor: pointer;">Volumes</span>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-item" onclick="loadFilesPage('${currentVolume.path}')" style="cursor: pointer;">${currentVolume.name}</span>
+        ${items.length > 0 ? '<span class="breadcrumb-separator">/</span>' : ''}
         ${items.join('')}
     `;
 }

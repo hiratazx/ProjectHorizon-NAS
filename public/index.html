@@ -13,9 +13,160 @@
 </head>
 
 <body>
-    <!-- Login Modal -->
+    <!-- Onboarding Wizard -->
     <div class="auth-overlay" id="authOverlay">
-        <div class="auth-modal">
+        <div class="onboarding-container" id="onboardingContainer" style="display: none;">
+            <!-- Progress Steps -->
+            <div class="onboarding-progress">
+                <div class="progress-step active" data-step="1"><span>1</span></div>
+                <div class="progress-line"></div>
+                <div class="progress-step" data-step="2"><span>2</span></div>
+                <div class="progress-line"></div>
+                <div class="progress-step" data-step="3"><span>3</span></div>
+                <div class="progress-line"></div>
+                <div class="progress-step" data-step="4"><span>4</span></div>
+                <div class="progress-line"></div>
+                <div class="progress-step" data-step="5"><span>5</span></div>
+            </div>
+
+            <!-- Step 1: Welcome -->
+            <div class="onboarding-step active" id="step1">
+                <div class="onboarding-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M2 12h20" />
+                        <path
+                            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                    </svg>
+                </div>
+                <h1>Welcome to ProjectHorizon</h1>
+                <p class="onboarding-subtitle">Your personal NAS dashboard inspired by TrueNAS with a modern, intuitive
+                    interface.</p>
+                <div class="onboarding-features">
+                    <div class="feature-item">
+                        <span class="feature-icon">📊</span>
+                        <span>Real-time system monitoring</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🐳</span>
+                        <span>Docker container management</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📁</span>
+                        <span>File browser & storage pools</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-lg" onclick="nextOnboardingStep()">Get Started</button>
+            </div>
+
+            <!-- Step 2: Create Account -->
+            <div class="onboarding-step" id="step2">
+                <h2>Create Admin Account</h2>
+                <p class="onboarding-subtitle">Set up your administrator credentials to secure your dashboard.</p>
+                <form id="onboardingAccountForm" class="onboarding-form">
+                    <div class="form-group">
+                        <label for="obUsername">Username</label>
+                        <input type="text" id="obUsername" required minlength="3" placeholder="admin">
+                    </div>
+                    <div class="form-group">
+                        <label for="obPassword">Password</label>
+                        <input type="password" id="obPassword" required minlength="6" placeholder="Min 6 characters">
+                    </div>
+                    <div class="form-group">
+                        <label for="obConfirm">Confirm Password</label>
+                        <input type="password" id="obConfirm" required placeholder="Confirm password">
+                    </div>
+                    <div class="form-error" id="obAccountError"></div>
+                    <div class="onboarding-actions">
+                        <button type="button" class="btn btn-secondary" onclick="prevOnboardingStep()">Back</button>
+                        <button type="submit" class="btn btn-primary">Continue</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Step 3: Setup Volume -->
+            <div class="onboarding-step" id="step3">
+                <h2>Add Storage Volume</h2>
+                <p class="onboarding-subtitle">Configure a storage location for your NAS. You can add more later in
+                    Settings.</p>
+                <form id="onboardingVolumeForm" class="onboarding-form">
+                    <div class="form-group">
+                        <label for="obVolumeName">Volume Name</label>
+                        <input type="text" id="obVolumeName" placeholder="My Storage" value="Main Storage">
+                    </div>
+                    <div class="form-group">
+                        <label for="obHostPath">Host Path (Source)</label>
+                        <input type="text" id="obHostPath" placeholder="/home/user/data">
+                    </div>
+                    <div class="form-group">
+                        <label for="obMountPath">NAS Path (Target)</label>
+                        <input type="text" id="obMountPath" placeholder="/media/storage" value="/media/storage">
+                    </div>
+                    <div class="form-error" id="obVolumeError"></div>
+                    <div class="onboarding-actions">
+                        <button type="button" class="btn btn-secondary" onclick="prevOnboardingStep()">Back</button>
+                        <button type="submit" class="btn btn-primary">Continue</button>
+                        <button type="button" class="btn btn-ghost" onclick="skipVolumeStep()">Skip for now</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Step 4: Telemetry -->
+            <div class="onboarding-step" id="step4">
+                <div class="onboarding-icon small">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+                        <path d="M12 16v-4" />
+                        <path d="M12 8h.01" />
+                    </svg>
+                </div>
+                <h2>Help Improve ProjectHorizon</h2>
+                <p class="onboarding-subtitle">Anonymous telemetry helps us understand how you use the dashboard and
+                    improve the experience.</p>
+                <div class="telemetry-option">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="telemetryEnabled" disabled>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <div class="telemetry-info">
+                        <strong>Send anonymous usage data</strong>
+                        <span class="coming-soon-badge">Coming Soon</span>
+                    </div>
+                </div>
+                <p class="telemetry-note">We never collect personal data, file contents, or login credentials.</p>
+                <div class="onboarding-actions">
+                    <button type="button" class="btn btn-secondary" onclick="prevOnboardingStep()">Back</button>
+                    <button type="button" class="btn btn-primary" onclick="nextOnboardingStep()">Continue</button>
+                </div>
+            </div>
+
+            <!-- Step 5: Finish -->
+            <div class="onboarding-step" id="step5">
+                <div class="onboarding-icon success">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                </div>
+                <h2>You're All Set!</h2>
+                <p class="onboarding-subtitle">ProjectHorizon is ready to use. Start managing your storage, containers,
+                    and more.</p>
+                <div class="finish-summary">
+                    <div class="summary-item">
+                        <span class="summary-icon">✓</span>
+                        <span>Admin account created</span>
+                    </div>
+                    <div class="summary-item" id="volumeSummary" style="display: none;">
+                        <span class="summary-icon">✓</span>
+                        <span id="volumeSummaryText">Storage volume configured</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-lg" onclick="finishOnboarding()">Open Dashboard</button>
+            </div>
+        </div>
+
+        <!-- Login Form (for returning users) -->
+        <div class="auth-modal" id="loginModal" style="display: none;">
             <div class="auth-logo">
                 <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10" />
@@ -25,29 +176,7 @@
                 </svg>
                 <h1>ProjectHorizon</h1>
             </div>
-
-            <!-- Setup Form (first time) -->
-            <form class="auth-form" id="setupForm" style="display: none;">
-                <h2>Create Admin Account</h2>
-                <p class="auth-subtitle">Set up your administrator credentials</p>
-                <div class="form-group">
-                    <label for="setupUsername">Username</label>
-                    <input type="text" id="setupUsername" required minlength="3" placeholder="admin">
-                </div>
-                <div class="form-group">
-                    <label for="setupPassword">Password</label>
-                    <input type="password" id="setupPassword" required minlength="6" placeholder="Min 6 characters">
-                </div>
-                <div class="form-group">
-                    <label for="setupConfirm">Confirm Password</label>
-                    <input type="password" id="setupConfirm" required placeholder="Confirm password">
-                </div>
-                <div class="form-error" id="setupError"></div>
-                <button type="submit" class="btn btn-primary btn-full">Create Account</button>
-            </form>
-
-            <!-- Login Form -->
-            <form class="auth-form" id="loginForm" style="display: none;">
+            <form class="auth-form" id="loginForm">
                 <h2>Welcome Back</h2>
                 <p class="auth-subtitle">Sign in to your account</p>
                 <div class="form-group">
@@ -63,6 +192,7 @@
             </form>
         </div>
     </div>
+
 
     <div class="app" id="mainApp" style="display: none;">
         <!-- Sidebar -->
