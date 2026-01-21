@@ -37,6 +37,7 @@ func main() {
 		api.RegisterDockerRoutes(apiGroup)
 		api.RegisterStorageRoutes(apiGroup)
 		api.RegisterSettingsRoutes(apiGroup)
+		api.RegisterServicesRoutes(apiGroup)
 	}
 
 	// Serve static files - try multiple locations
