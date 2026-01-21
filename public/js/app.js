@@ -633,8 +633,116 @@ function refreshContainers() {
 // ============================================
 
 let currentVolume = null;
+let navigationHistory = [];
+let historyIndex = -1;
+let allFileItems = []; // Store for filtering
+
+// Navigation functions
+function goBack() {
+    if (historyIndex > 0) {
+        historyIndex--;
+        const entry = navigationHistory[historyIndex];
+        currentVolume = entry.volume;
+        loadFilesPageInternal(entry.path, false);
+    }
+}
+
+function goForward() {
+    if (historyIndex < navigationHistory.length - 1) {
+        historyIndex++;
+        const entry = navigationHistory[historyIndex];
+        currentVolume = entry.volume;
+        loadFilesPageInternal(entry.path, false);
+    }
+}
+
+function goUp() {
+    if (!currentVolume) return;
+
+    // If at volume root, go back to volumes list
+    if (currentPath === currentVolume.path) {
+        backToVolumes();
+    } else {
+        // Go to parent directory
+        const parent = currentPath.substring(0, currentPath.lastIndexOf('/')) || currentVolume.path;
+        if (parent.startsWith(currentVolume.path)) {
+            loadFilesPage(parent);
+        } else {
+            loadFilesPage(currentVolume.path);
+        }
+    }
+}
+
+function refreshFiles() {
+    if (currentVolume) {
+        loadFilesPageInternal(currentPath, false);
+    } else {
+        loadFilesPage(null);
+    }
+}
+
+function handlePathInput(event) {
+    if (event.key === 'Enter') {
+        goToPath();
+    }
+}
+
+function goToPath() {
+    const pathInput = document.getElementById('pathInput');
+    const path = pathInput.value.trim();
+    if (path) {
+        // Check if path is within current volume or reset
+        if (currentVolume && path.startsWith(currentVolume.path)) {
+            loadFilesPage(path);
+        } else {
+            // Try to navigate directly
+            currentVolume = { id: 'custom', path: path, name: 'Custom' };
+            loadFilesPage(path);
+        }
+    }
+}
+
+function filterFiles() {
+    const searchTerm = document.getElementById('fileSearch').value.toLowerCase();
+    const fileItems = document.querySelectorAll('.file-item');
+
+    fileItems.forEach(item => {
+        const fileName = item.querySelector('.file-name')?.textContent.toLowerCase() || '';
+        if (fileName === '..' || fileName === 'back to volumes' || fileName.includes(searchTerm)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function updateToolbarState() {
+    const btnBack = document.getElementById('btnBack');
+    const btnForward = document.getElementById('btnForward');
+    const btnUp = document.getElementById('btnUp');
+    const pathInput = document.getElementById('pathInput');
+
+    if (btnBack) btnBack.disabled = historyIndex <= 0;
+    if (btnForward) btnForward.disabled = historyIndex >= navigationHistory.length - 1;
+    if (btnUp) btnUp.disabled = !currentVolume;
+    if (pathInput) pathInput.value = currentVolume ? currentPath : 'Volumes';
+}
+
+function addToHistory(path, volume) {
+    // Remove forward history when navigating to new path
+    if (historyIndex < navigationHistory.length - 1) {
+        navigationHistory = navigationHistory.slice(0, historyIndex + 1);
+    }
+    navigationHistory.push({ path, volume });
+    historyIndex = navigationHistory.length - 1;
+    updateToolbarState();
+}
 
 async function loadFilesPage(path = null) {
+    loadFilesPageInternal(path, true);
+}
+
+async function loadFilesPageInternal(path = null, addHistory = true) {
     const container = document.getElementById('filesList');
     const breadcrumb = document.getElementById('fileBreadcrumb');
 
@@ -686,6 +794,12 @@ async function loadFilesPage(path = null) {
     try {
         const data = await fetchAPI(`/storage/browse?path=${encodeURIComponent(browsePath)}`);
         currentPath = data.currentPath;
+
+        // Add to history if needed
+        if (addHistory) {
+            addToHistory(currentPath, currentVolume);
+        }
+        updateToolbarState();
 
         // Update breadcrumb with volume name
         updateBreadcrumb(data.currentPath);

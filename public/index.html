@@ -462,16 +462,68 @@
             <div class="page" id="page-files">
                 <div class="page-content">
                     <div class="card">
-                        <div class="card-header">
-                            <h2>File Browser</h2>
+                        <!-- Navigation Toolbar -->
+                        <div class="file-toolbar">
+                            <div class="toolbar-nav">
+                                <button class="toolbar-btn" id="btnBack" onclick="goBack()" title="Back" disabled>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="15 18 9 12 15 6" />
+                                    </svg>
+                                </button>
+                                <button class="toolbar-btn" id="btnForward" onclick="goForward()" title="Forward"
+                                    disabled>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="9 18 15 12 9 6" />
+                                    </svg>
+                                </button>
+                                <button class="toolbar-btn" id="btnUp" onclick="goUp()" title="Up">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="18 15 12 9 6 15" />
+                                    </svg>
+                                </button>
+                                <button class="toolbar-btn" onclick="refreshFiles()" title="Refresh">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="23 4 23 10 17 10" />
+                                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="toolbar-path">
+                                <div class="path-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path
+                                            d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                                    </svg>
+                                </div>
+                                <input type="text" class="path-input" id="pathInput" placeholder="Enter path..."
+                                    onkeypress="handlePathInput(event)">
+                                <button class="path-go-btn" onclick="goToPath()" title="Go">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="9 18 15 12 9 6" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="toolbar-search">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                <input type="text" class="search-input" id="fileSearch" placeholder="Search files..."
+                                    oninput="filterFiles()">
+                            </div>
+                        </div>
+                        <!-- Breadcrumb -->
+                        <div class="file-breadcrumb-bar">
                             <div class="breadcrumb" id="fileBreadcrumb"></div>
                         </div>
+                        <!-- Files List -->
                         <div class="files-list" id="filesList">
                             <div class="loading-spinner"></div>
                         </div>
                     </div>
                 </div>
             </div>
+
 
             <!-- Network Page -->
             <div class="page" id="page-network">
