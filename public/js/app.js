@@ -574,12 +574,19 @@ async function loadStoragePage() {
 // ============================================
 
 async function loadContainersPage() {
+    loadContainersList();
+    loadImagesList();
+}
+
+let currentLogsContainerId = null;
+
+async function loadContainersList() {
     try {
         const data = await fetchAPI('/docker/containers');
         const container = document.getElementById('containersList');
 
         if (!data || data.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No containers found</p>';
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">No containers found</p>';
             return;
         }
 
@@ -588,21 +595,34 @@ async function loadContainersPage() {
                 cont.state === 'paused' ? 'paused' : 'stopped';
 
             return `
-                <div class="container-item">
+                <div class="container-card">
+                    <div class="container-status ${stateClass}"></div>
                     <div class="container-info">
-                        <div class="container-status ${stateClass}"></div>
-                        <div>
-                            <div class="container-name">${cont.name}</div>
-                            <div class="container-image">${cont.image}</div>
-                        </div>
+                        <div class="container-name">${cont.name}</div>
+                        <div class="container-image">${cont.image}</div>
+                    </div>
+                    <div class="container-stats" id="stats-${cont.id}">
+                        <span class="container-stat">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
+                                <rect x="9" y="9" width="6" height="6"/>
+                                <line x1="9" y1="1" x2="9" y2="4"/>
+                                <line x1="15" y1="1" x2="15" y2="4"/>
+                                <line x1="9" y1="20" x2="9" y2="23"/>
+                                <line x1="15" y1="20" x2="15" y2="23"/>
+                            </svg>
+                            ${cont.status}
+                        </span>
                     </div>
                     <div class="container-actions">
                         ${cont.state === 'running' ? `
-                            <button class="btn btn-secondary btn-sm" onclick="containerAction('${cont.id}', 'stop')">Stop</button>
-                            <button class="btn btn-secondary btn-sm" onclick="containerAction('${cont.id}', 'restart')">Restart</button>
+                            <button class="btn btn-secondary" onclick="containerAction('${cont.id}', 'stop')">Stop</button>
+                            <button class="btn btn-secondary" onclick="containerAction('${cont.id}', 'restart')">Restart</button>
                         ` : `
-                            <button class="btn btn-primary btn-sm" onclick="containerAction('${cont.id}', 'start')">Start</button>
+                            <button class="btn btn-primary" onclick="containerAction('${cont.id}', 'start')">Start</button>
                         `}
+                        <button class="btn btn-secondary" onclick="showContainerLogs('${cont.id}', '${cont.name}')">Logs</button>
+                        <button class="btn btn-danger" onclick="deleteContainer('${cont.id}', '${cont.name}')">Delete</button>
                     </div>
                 </div>
             `;
@@ -613,20 +633,115 @@ async function loadContainersPage() {
     }
 }
 
+async function loadImagesList() {
+    try {
+        const data = await fetchAPI('/docker/images');
+        const container = document.getElementById('imagesList');
+
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No images found</p>';
+            return;
+        }
+
+        container.innerHTML = data.map(img => {
+            const tags = img.tags && img.tags.length > 0 ? img.tags.join(', ') : '<none>';
+            const size = formatBytes(img.size);
+
+            return `
+                <div class="image-card">
+                    <div class="image-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                    </div>
+                    <div class="image-info">
+                        <div class="image-tag">${tags}</div>
+                        <div class="image-meta">ID: ${img.id} • Size: ${size}</div>
+                    </div>
+                    <div class="image-actions">
+                        <button class="btn btn-danger" onclick="deleteImage('${img.id}')">Delete</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Failed to load images:', error);
+        document.getElementById('imagesList').innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Failed to load images</p>';
+    }
+}
+
 async function containerAction(id, action) {
     try {
         await fetchAPI(`/docker/containers/${id}/${action}`, { method: 'POST' });
-        // Reload after action
-        setTimeout(() => loadContainersPage(), 500);
+        setTimeout(() => loadContainersList(), 500);
     } catch (error) {
         console.error(`Failed to ${action} container:`, error);
         alert(`Failed to ${action} container`);
     }
 }
 
+async function deleteContainer(id, name) {
+    if (!confirm(`Are you sure you want to delete container "${name}"? This cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        await fetchAPI(`/docker/containers/${id}`, { method: 'DELETE' });
+        loadContainersList();
+    } catch (error) {
+        console.error('Failed to delete container:', error);
+        alert('Failed to delete container');
+    }
+}
+
+async function deleteImage(id) {
+    if (!confirm('Are you sure you want to delete this image? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        await fetchAPI(`/docker/images/${id}`, { method: 'DELETE' });
+        loadImagesList();
+    } catch (error) {
+        console.error('Failed to delete image:', error);
+        alert('Failed to delete image: ' + error.message);
+    }
+}
+
+async function showContainerLogs(id, name) {
+    currentLogsContainerId = id;
+    document.getElementById('logsModalTitle').textContent = `Logs: ${name}`;
+    document.getElementById('logsContent').textContent = 'Loading logs...';
+    document.getElementById('logsModal').style.display = 'flex';
+
+    await refreshLogs();
+}
+
+async function refreshLogs() {
+    if (!currentLogsContainerId) return;
+
+    try {
+        const response = await fetch(`${API_BASE}/docker/containers/${currentLogsContainerId}/logs`, {
+            headers: getAuthHeaders()
+        });
+        const logs = await response.text();
+        document.getElementById('logsContent').textContent = logs || 'No logs available';
+    } catch (error) {
+        document.getElementById('logsContent').textContent = 'Failed to load logs: ' + error.message;
+    }
+}
+
+function closeLogsModal() {
+    document.getElementById('logsModal').style.display = 'none';
+    currentLogsContainerId = null;
+}
+
 function refreshContainers() {
     loadContainersPage();
 }
+
 
 // ============================================
 // Files Page - Volume-Based Browser

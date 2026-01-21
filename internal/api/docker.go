@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/docker/docker/api/types"
@@ -17,8 +18,11 @@ func RegisterDockerRoutes(rg *gin.RouterGroup) {
 		docker.GET("/containers", listContainers)
 		docker.GET("/containers/:id", getContainer)
 		docker.GET("/containers/:id/logs", getContainerLogs)
+		docker.GET("/containers/:id/stats", getContainerStats)
 		docker.POST("/containers/:id/:action", containerAction)
+		docker.DELETE("/containers/:id", deleteContainer)
 		docker.GET("/images", listImages)
+		docker.DELETE("/images/:id", deleteImage)
 	}
 }
 
@@ -251,4 +255,121 @@ func listImages(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// ContainerStats represents container resource usage
+type ContainerStats struct {
+	CPUPercent    float64 `json:"cpuPercent"`
+	MemoryUsage   uint64  `json:"memoryUsage"`
+	MemoryLimit   uint64  `json:"memoryLimit"`
+	MemoryPercent float64 `json:"memoryPercent"`
+	NetworkRx     uint64  `json:"networkRx"`
+	NetworkTx     uint64  `json:"networkTx"`
+}
+
+func getContainerStats(c *gin.Context) {
+	id := c.Param("id")
+
+	cli, err := getDockerClient()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Docker not available"})
+		return
+	}
+	defer cli.Close()
+
+	stats, err := cli.ContainerStats(context.Background(), id, false)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer stats.Body.Close()
+
+	var statsJSON types.StatsJSON
+	if err := json.NewDecoder(stats.Body).Decode(&statsJSON); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse stats"})
+		return
+	}
+
+	// Calculate CPU percentage
+	cpuDelta := float64(statsJSON.CPUStats.CPUUsage.TotalUsage - statsJSON.PreCPUStats.CPUUsage.TotalUsage)
+	systemDelta := float64(statsJSON.CPUStats.SystemUsage - statsJSON.PreCPUStats.SystemUsage)
+	cpuPercent := 0.0
+	if systemDelta > 0 && cpuDelta > 0 {
+		cpuPercent = (cpuDelta / systemDelta) * float64(len(statsJSON.CPUStats.CPUUsage.PercpuUsage)) * 100.0
+	}
+
+	// Calculate memory percentage
+	memPercent := 0.0
+	if statsJSON.MemoryStats.Limit > 0 {
+		memPercent = float64(statsJSON.MemoryStats.Usage) / float64(statsJSON.MemoryStats.Limit) * 100.0
+	}
+
+	// Calculate network I/O
+	var networkRx, networkTx uint64
+	for _, net := range statsJSON.Networks {
+		networkRx += net.RxBytes
+		networkTx += net.TxBytes
+	}
+
+	c.JSON(http.StatusOK, ContainerStats{
+		CPUPercent:    cpuPercent,
+		MemoryUsage:   statsJSON.MemoryStats.Usage,
+		MemoryLimit:   statsJSON.MemoryStats.Limit,
+		MemoryPercent: memPercent,
+		NetworkRx:     networkRx,
+		NetworkTx:     networkTx,
+	})
+}
+
+func deleteContainer(c *gin.Context) {
+	id := c.Param("id")
+
+	cli, err := getDockerClient()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Docker not available"})
+		return
+	}
+	defer cli.Close()
+
+	// Force remove and remove volumes
+	err = cli.ContainerRemove(context.Background(), id, container.RemoveOptions{
+		Force:         true,
+		RemoveVolumes: true,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":     true,
+		"containerId": id,
+		"message":     "Container removed",
+	})
+}
+
+func deleteImage(c *gin.Context) {
+	id := c.Param("id")
+
+	cli, err := getDockerClient()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Docker not available"})
+		return
+	}
+	defer cli.Close()
+
+	_, err = cli.ImageRemove(context.Background(), id, types.ImageRemoveOptions{
+		Force:         true,
+		PruneChildren: true,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"imageId": id,
+		"message": "Image removed",
+	})
 }
