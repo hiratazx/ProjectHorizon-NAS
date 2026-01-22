@@ -83,11 +83,13 @@ function updateVersionBar(versionInfo) {
     // Hide for stable builds
     if (versionType === 'stable') {
         versionBar.style.display = 'none';
+        document.body.classList.remove('has-version-bar');
         return;
     }
 
     // Show for dev, alpha, beta, preview
     versionBar.style.display = 'block';
+    document.body.classList.add('has-version-bar');
     versionBarVersion.textContent = versionInfo.version;
 
     switch (versionType) {

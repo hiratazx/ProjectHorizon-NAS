@@ -2624,6 +2624,15 @@ textarea,
     font-size: 0.8125rem;
 }
 
+/* Add bottom padding when version bar is visible */
+body.has-version-bar .main-content {
+    padding-bottom: 50px;
+}
+
+body.has-version-bar .page-content {
+    padding-bottom: 60px;
+}
+
 .version-bar-content {
     display: flex;
     align-items: center;
