@@ -1,13 +1,4 @@
 {
-  "volumes": [
-    {
-      "id": "",
-      "name": "Main Storage",
-      "hostPath": "/media",
-      "mountPath": "/media",
-      "mode": "rw"
-    }
-  ],
   "settings": {
     "defaultPath": "/media"
   }
