@@ -40,7 +40,6 @@ func main() {
 		api.RegisterStorageRoutes(apiGroup)
 		api.RegisterSettingsRoutes(apiGroup)
 		api.RegisterServicesRoutes(apiGroup)
-		api.RegisterSharesRoutes(apiGroup)
 
 		// Version endpoint for update detection
 		apiGroup.GET("/version", func(c *gin.Context) {
