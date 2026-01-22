@@ -1500,7 +1500,8 @@ let docOriginalContent = '';
 async function openDocViewer(path, name, type) {
     document.getElementById('docTitle').textContent = name;
     const container = document.getElementById('docContent');
-    const fileUrl = API_BASE + '/storage/file?path=' + encodeURIComponent(path);
+    // Add cache-busting timestamp to prevent browser caching
+    const fileUrl = API_BASE + '/storage/file?path=' + encodeURIComponent(path) + '&t=' + Date.now();
     const editBtn = document.getElementById('docEditBtn');
     const saveBtn = document.getElementById('docSaveBtn');
 
@@ -1518,7 +1519,10 @@ async function openDocViewer(path, name, type) {
         editBtn.style.display = 'inline-flex';
 
         try {
-            const response = await fetch(fileUrl, { headers: getAuthHeaders() });
+            const response = await fetch(fileUrl, {
+                headers: getAuthHeaders(),
+                cache: 'no-store' // Also tell browser not to cache
+            });
             const text = await response.text();
             docOriginalContent = text;
             container.innerHTML = `<pre>${escapeHtml(text)}</pre>`;
