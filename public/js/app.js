@@ -981,10 +981,11 @@ async function loadFilesPageInternal(path = null, addHistory = true) {
             `;
 
             const clickHandler = item.isDirectory ?
-                `onclick="loadFilesPage('${item.path}')"` : '';
+                `onclick="loadFilesPage('${item.path}')"` :
+                `ondblclick="openFile('${item.path}', '${item.name}')"`;
 
             return `
-                <div class="file-item" ${clickHandler}>
+                <div class="file-item" ${clickHandler} data-path="${item.path}">
                     ${icon}
                     <span class="file-name">${item.name}</span>
                     <span class="file-size">${item.isDirectory ? '--' : formatBytes(item.size)}</span>
@@ -1207,6 +1208,8 @@ function closePropertiesModal() {
 }
 
 // File viewer functions
+let openAsTarget = null;
+
 function openFile(path, name) {
     const ext = name.split('.').pop().toLowerCase();
 
@@ -1215,6 +1218,7 @@ function openFile(path, name) {
     const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
     const textExts = ['txt', 'md', 'json', 'js', 'css', 'html', 'xml', 'csv', 'log', 'sh', 'py', 'go', 'yaml', 'yml'];
     const pdfExts = ['pdf'];
+    const docExts = ['doc', 'docx'];
 
     if (videoExts.includes(ext)) {
         openMediaViewer(path, name, 'video');
@@ -1226,10 +1230,52 @@ function openFile(path, name) {
         openDocViewer(path, name, 'text');
     } else if (pdfExts.includes(ext)) {
         openDocViewer(path, name, 'pdf');
+    } else if (docExts.includes(ext)) {
+        openDocViewer(path, name, 'pdf'); // Try to open doc/docx as PDF preview
     } else {
-        // Default: download
-        contextTarget = { path, name, isDirectory: false };
-        contextDownload();
+        // Unknown extension - show Open As modal
+        showOpenAsModal(path, name);
+    }
+}
+
+function showOpenAsModal(path, name) {
+    openAsTarget = { path, name };
+    document.getElementById('openAsFileName').textContent = name;
+    document.getElementById('openAsModal').style.display = 'flex';
+}
+
+function closeOpenAsModal() {
+    document.getElementById('openAsModal').style.display = 'none';
+    openAsTarget = null;
+}
+
+function openAsType(type) {
+    if (!openAsTarget) return;
+    closeOpenAsModal();
+
+    const { path, name } = openAsTarget;
+
+    switch (type) {
+        case 'text':
+            openDocViewer(path, name, 'text');
+            break;
+        case 'video':
+            openMediaViewer(path, name, 'video');
+            break;
+        case 'audio':
+            openMediaViewer(path, name, 'audio');
+            break;
+        case 'image':
+            openMediaViewer(path, name, 'image');
+            break;
+        case 'pdf':
+            openDocViewer(path, name, 'pdf');
+            break;
+        case 'download':
+        default:
+            contextTarget = { path, name, isDirectory: false };
+            contextDownload();
+            break;
     }
 }
 
@@ -1779,11 +1825,23 @@ async function loadSharesList() {
     }
 }
 
-function showAddShareModal() {
+let shareVolumes = [];
+
+async function showAddShareModal() {
     document.getElementById('shareModal').style.display = 'flex';
     document.getElementById('shareForm').reset();
     document.getElementById('shareError').textContent = '';
     toggleShareFields();
+
+    // Populate volume dropdown
+    try {
+        shareVolumes = await fetchAPI('/settings/volumes');
+        const volumeSelect = document.getElementById('shareVolume');
+        volumeSelect.innerHTML = '<option value="">-- Select Volume --</option>' +
+            (shareVolumes || []).map(v => `<option value="${v.hostPath}">${v.name} (${v.hostPath})</option>`).join('');
+    } catch (error) {
+        console.error('Failed to load volumes:', error);
+    }
 }
 
 function closeShareModal() {
@@ -1796,17 +1854,109 @@ function toggleShareFields() {
     document.getElementById('nfsFields').style.display = type === 'nfs' ? 'block' : 'none';
 }
 
+function updateSharePath() {
+    const volumePath = document.getElementById('shareVolume').value;
+    const folderPath = document.getElementById('shareFolderPath').value.trim();
+
+    if (volumePath) {
+        const fullPath = folderPath ? volumePath + '/' + folderPath.replace(/^\//, '') : volumePath;
+        document.getElementById('sharePath').value = fullPath;
+    } else {
+        document.getElementById('sharePath').value = '';
+    }
+}
+
+// Folder browser for share path selection
+let folderBrowserPath = '';
+let folderBrowserVolumePath = '';
+
+function browseShareFolder() {
+    const volumePath = document.getElementById('shareVolume').value;
+    if (!volumePath) {
+        alert('Please select a volume first');
+        return;
+    }
+
+    folderBrowserVolumePath = volumePath;
+    folderBrowserPath = volumePath;
+    document.getElementById('folderBrowserModal').style.display = 'flex';
+    loadFolderBrowser(volumePath);
+}
+
+async function loadFolderBrowser(path) {
+    try {
+        const data = await fetchAPI(`/storage/browse?path=${encodeURIComponent(path)}`);
+        folderBrowserPath = data.currentPath;
+
+        const relativePath = folderBrowserPath.replace(folderBrowserVolumePath, '') || '/';
+        document.getElementById('folderBrowserPath').textContent = relativePath;
+
+        const folders = (data.items || []).filter(item => item.isDirectory);
+
+        let html = '';
+
+        // Parent directory link
+        if (folderBrowserPath !== folderBrowserVolumePath) {
+            const parent = folderBrowserPath.substring(0, folderBrowserPath.lastIndexOf('/')) || folderBrowserVolumePath;
+            html += `
+                <div class="file-item" onclick="loadFolderBrowser('${parent}')">
+                    <svg class="file-icon folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span class="file-name">..</span>
+                </div>
+            `;
+        }
+
+        html += folders.map(folder => `
+            <div class="file-item" onclick="loadFolderBrowser('${folder.path}')">
+                <svg class="file-icon folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span class="file-name">${folder.name}</span>
+            </div>
+        `).join('');
+
+        if (folders.length === 0 && folderBrowserPath === folderBrowserVolumePath) {
+            html = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No subfolders (volume root will be shared)</p>';
+        } else if (folders.length === 0) {
+            html += '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No subfolders</p>';
+        }
+
+        document.getElementById('folderBrowserList').innerHTML = html;
+    } catch (error) {
+        document.getElementById('folderBrowserList').innerHTML = '<p style="color: var(--danger)">Failed to load folder</p>';
+    }
+}
+
+function closeFolderBrowser() {
+    document.getElementById('folderBrowserModal').style.display = 'none';
+}
+
+function selectBrowsedFolder() {
+    const relativePath = folderBrowserPath.replace(folderBrowserVolumePath, '').replace(/^\//, '');
+    document.getElementById('shareFolderPath').value = relativePath;
+    updateSharePath();
+    closeFolderBrowser();
+}
+
 if (document.getElementById('shareForm')) {
     document.getElementById('shareForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const errorDiv = document.getElementById('shareError');
         errorDiv.textContent = '';
 
+        const sharePath = document.getElementById('sharePath').value;
+        if (!sharePath) {
+            errorDiv.textContent = 'Please select a volume';
+            return;
+        }
+
         const type = document.getElementById('shareType').value;
         const data = {
             type: type,
             name: document.getElementById('shareName').value,
-            path: document.getElementById('sharePath').value,
+            path: sharePath,
             readOnly: document.getElementById('shareReadOnly').checked,
             guestOk: document.getElementById('shareGuestOk').checked,
             allowedIPs: document.getElementById('shareAllowedIPs').value
@@ -1838,4 +1988,3 @@ async function deleteShare(id) {
         alert('Failed to delete share: ' + error.message);
     }
 }
-
