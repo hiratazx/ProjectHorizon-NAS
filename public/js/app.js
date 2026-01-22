@@ -1164,7 +1164,77 @@ function formatDate(timestamp) {
 async function loadSettingsPage() {
     loadVolumes();
     if (currentUser && currentUser.role === 'admin') {
+        document.getElementById('usersSection').style.display = 'block';
         loadUsers();
+
+        const servicesSection = document.getElementById('servicesSection');
+        if (servicesSection) {
+            servicesSection.style.display = 'block';
+            loadServicesList();
+        }
+    } else {
+        const servicesSection = document.getElementById('servicesSection');
+        if (servicesSection) servicesSection.style.display = 'none';
+    }
+}
+
+function getServiceStateClass(active, sub) {
+    if (active === 'active' && sub === 'running') return 'active';
+    if (active === 'active' && sub === 'exited') return 'exited';
+    if (active === 'inactive') return 'inactive';
+    if (active === 'failed') return 'failed';
+    return '';
+}
+
+async function loadServicesList() {
+    try {
+        const services = await fetchAPI('/services');
+        const container = document.getElementById('servicesList');
+
+        if (!services || services.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">No services found.</p>';
+            return;
+        }
+
+        container.innerHTML = services.map(svc => {
+            const stateClass = getServiceStateClass(svc.activeState, svc.subState);
+            const isRunning = svc.activeState === 'active' && svc.subState === 'running';
+
+            return `
+                <div class="service-card">
+                    <div class="service-status ${stateClass}"></div>
+                    <div class="service-info">
+                        <div class="service-name">${svc.name}</div>
+                        <div class="service-desc">${svc.description}</div>
+                        <div class="service-meta">
+                            State: ${svc.activeState} (${svc.subState})
+                        </div>
+                    </div>
+                    <div class="service-actions">
+                        ${isRunning ? `
+                            <button class="btn btn-secondary" onclick="serviceAction('${svc.name}', 'restart')">Restart</button>
+                            <button class="btn btn-secondary" onclick="serviceAction('${svc.name}', 'stop')">Stop</button>
+                        ` : `
+                            <button class="btn btn-primary" onclick="serviceAction('${svc.name}', 'start')">Start</button>
+                        `}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Failed to load services:', error);
+        document.getElementById('servicesList').innerHTML = '<p style="color: var(--text-secondary); text-align: center;">Failed to load services</p>';
+    }
+}
+
+async function serviceAction(name, action) {
+    try {
+        await fetchAPI(`/services/${name}/${action}`, { method: 'POST' });
+        // Reload after short delay to allow state change
+        setTimeout(() => loadServicesList(), 1000);
+    } catch (error) {
+        console.error(`Failed to ${action} service:`, error);
+        alert(`Failed to ${action} service: ${error.message}`);
     }
 }
 

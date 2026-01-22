@@ -1820,3 +1820,72 @@ body {
     border-top: 1px solid var(--border-primary);
     margin-top: 16px;
 }
+
+/* Service Cards */
+.service-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all var(--transition-fast);
+}
+
+.service-card:hover {
+    background: var(--bg-hover);
+}
+
+.service-status {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.service-status.active {
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+}
+
+.service-status.inactive,
+.service-status.failed {
+    background: var(--danger);
+}
+
+.service-status.activating,
+.service-status.deactivating {
+    background: var(--warning);
+}
+
+.service-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.service-name {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+}
+
+.service-desc {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.service-meta {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-top: 2px;
+}
+
+.service-actions .btn {
+    padding: 6px 12px;
+    font-size: 0.875rem;
+}
