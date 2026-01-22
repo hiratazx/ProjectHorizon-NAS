@@ -3,15 +3,8 @@
     {
       "id": "",
       "name": "Main Storage",
-      "hostPath": "/home/itzkaguya/truenas-clone-disks",
+      "hostPath": "/media/files",
       "mountPath": "/media",
-      "mode": "rw"
-    },
-    {
-      "id": "vol-abcdefgh",
-      "name": "Main",
-      "hostPath": "/home/itzkaguya",
-      "mountPath": "/media/itzkaguya",
       "mode": "rw"
     }
   ],
