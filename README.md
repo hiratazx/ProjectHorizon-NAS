@@ -10,7 +10,24 @@ A TrueNAS-inspired NAS dashboard that can be deployed on existing Linux systems,
 - 🌙 **Dark Theme** - TrueNAS-inspired premium dark UI
 - 🔧 **Easy Install** - CasaOS-style installation with systemd service
 
-## Quick Start
+## Quick Start using Docker
+
+```bash
+# Pull the latest image
+docker pull hiratazx/projecthorizon:latest
+
+# Run the container (Example: Port 8080, sharing your home directory)
+docker run -d \
+  --name projecthorizon \
+  -v /path/to/your/date:/media:rw \
+  -p 8080:8080 \
+  hiratazx/projecthorizon:latest
+
+# Access at http://localhost:$TARGET_PORT
+```
+If you want to build the Docker Image, [see this](#build-the-docker-image).
+
+## Build
 
 ```bash
 # Build
@@ -45,6 +62,14 @@ make build-all
 
 # Create distribution tarball
 make dist
+```
+
+## Build the Docker Image
+
+```bash
+# Build
+docker build . -t hiratazx/projecthorizon
+# You can change the 'hiratazx/projecthorizon' whatever you want
 ```
 
 ## API Endpoints
