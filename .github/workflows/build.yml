@@ -13,41 +13,27 @@ env:
   IMAGE_NAME: hiratazx/projecthorizon
 
 jobs:
-  build:
+  meta:
+    name: Metadata
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
-
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_release: ${{ steps.version.outputs.is_release }}
+      version_type: ${{ steps.version.outputs.version_type }}
+      short_commit: ${{ steps.version.outputs.short_commit }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: '1.24'
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Determine version
         id: version
         run: |
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            # Tag build: use tag name (e.g., v1.0.0-beta)
             VERSION="${{ github.ref_name }}"
             IS_RELEASE="true"
             
-            # Determine version type
             if [[ "$VERSION" == *"-alpha"* ]]; then
               VERSION_TYPE="alpha"
             elif [[ "$VERSION" == *"-beta"* ]]; then
@@ -58,7 +44,6 @@ jobs:
               VERSION_TYPE="stable"
             fi
           else
-            # Push/manual build: use shortcommit-branch
             SHORT_COMMIT=$(git rev-parse --short HEAD)
             BRANCH=${GITHUB_REF_NAME//\//-}
             VERSION="${SHORT_COMMIT}-${BRANCH}"
@@ -70,45 +55,97 @@ jobs:
           echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
           echo "version_type=${VERSION_TYPE}" >> $GITHUB_OUTPUT
           echo "short_commit=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "branch=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+
+  build-binaries:
+    name: Build Go (${{ matrix.goarch }})
+    needs: meta
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64, arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
 
       - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
         run: |
           mkdir -p build
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-            -ldflags "-s -w -X main.Version=${{ steps.version.outputs.version }} -X main.GitCommit=${{ steps.version.outputs.short_commit }} -X main.VersionType=${{ steps.version.outputs.version_type }}" \
-            -o build/horizon-linux-amd64 ./cmd/horizon
+          # Construct dynamic binary name based on matrix
+          BINARY_NAME="horizon-${{ matrix.goos }}-${{ matrix.goarch }}"
           
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build \
-            -ldflags "-s -w -X main.Version=${{ steps.version.outputs.version }} -X main.GitCommit=${{ steps.version.outputs.short_commit }} -X main.VersionType=${{ steps.version.outputs.version_type }}" \
-            -o build/horizon-linux-arm64 ./cmd/horizon
+          go build \
+            -ldflags "-s -w -X main.Version=${{ needs.meta.outputs.version }} -X main.GitCommit=${{ needs.meta.outputs.short_commit }} -X main.VersionType=${{ needs.meta.outputs.version_type }}" \
+            -o build/$BINARY_NAME ./cmd/horizon
 
-      - name: Upload artifacts (non-release)
-        if: steps.version.outputs.is_release == 'false'
-        uses: actions/upload-artifact@v6
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: horizon-${{ steps.version.outputs.version }}
+          name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
           path: build/horizon-*
-          retention-days: 30
+          retention-days: 1
 
-      - name: Create Release (tag builds)
-        if: steps.version.outputs.is_release == 'true'
+  release:
+    name: Create Release
+    needs: [meta, build-binaries]
+    if: needs.meta.outputs.is_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          merge-multiple: true
+          path: build
+
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/horizon-*
+          files: build/*
           generate_release_notes: true
-          prerelease: ${{ steps.version.outputs.version_type != 'stable' }}
+          prerelease: ${{ needs.meta.outputs.version_type != 'stable' }}
 
-      - name: Build and push Docker image
+  build-docker:
+    name: Build Docker
+    needs: meta
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
-            ${{ steps.version.outputs.is_release == 'true' && steps.version.outputs.version_type == 'stable' && format('{0}:latest', env.IMAGE_NAME) || '' }}
+            ${{ env.IMAGE_NAME }}:${{ needs.meta.outputs.version }}
+            ${{ needs.meta.outputs.is_release == 'true' && needs.meta.outputs.version_type == 'stable' && format('{0}:latest', env.IMAGE_NAME) || '' }}
           build-args: |
-            VERSION=${{ steps.version.outputs.version }}
-            GIT_COMMIT=${{ steps.version.outputs.short_commit }}
-            VERSION_TYPE=${{ steps.version.outputs.version_type }}
+            VERSION=${{ needs.meta.outputs.version }}
+            GIT_COMMIT=${{ needs.meta.outputs.short_commit }}
+            VERSION_TYPE=${{ needs.meta.outputs.version_type }}
