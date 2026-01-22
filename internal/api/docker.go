@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 	"github.com/gin-gonic/gin"
 )
@@ -233,7 +233,7 @@ func listImages(c *gin.Context) {
 	}
 	defer cli.Close()
 
-	images, err := cli.ImageList(context.Background(), types.ImageListOptions{})
+	images, err := cli.ImageList(context.Background(), image.ListOptions{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -284,7 +284,7 @@ func getContainerStats(c *gin.Context) {
 	}
 	defer stats.Body.Close()
 
-	var statsJSON types.StatsJSON
+	var statsJSON container.StatsResponse
 	if err := json.NewDecoder(stats.Body).Decode(&statsJSON); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse stats"})
 		return
@@ -358,7 +358,7 @@ func deleteImage(c *gin.Context) {
 	}
 	defer cli.Close()
 
-	_, err = cli.ImageRemove(context.Background(), id, types.ImageRemoveOptions{
+	_, err = cli.ImageRemove(context.Background(), id, image.RemoveOptions{
 		Force:         true,
 		PruneChildren: true,
 	})
