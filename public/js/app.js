@@ -310,7 +310,9 @@ function navigateTo(page) {
     loadPageData(page);
 
     // Close sidebar on mobile
-    document.getElementById('sidebar').classList.remove('open');
+    if (window.innerWidth <= 768) {
+        closeSidebar();
+    }
 }
 
 function loadPageData(page) {
@@ -346,19 +348,40 @@ function loadPageData(page) {
 function initSidebar() {
     const menuToggle = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
 
     menuToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
+        toggleSidebar();
     });
 
-    // Close sidebar when clicking outside
+    // Close sidebar when clicking outside (backup for non-overlay clicks)
     document.addEventListener('click', (e) => {
         if (window.innerWidth <= 768) {
             if (!sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
-                sidebar.classList.remove('open');
+                closeSidebar();
             }
         }
     });
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    sidebar.classList.toggle('open');
+    if (overlay) {
+        overlay.classList.toggle('active');
+    }
+}
+
+function closeSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+
+    sidebar.classList.remove('open');
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
 }
 
 // ============================================
