@@ -32,6 +32,7 @@ func RegisterStorageRoutes(rg *gin.RouterGroup) {
 		storage.GET("/trash", listTrash)
 		storage.POST("/trash/restore", restoreFromTrash)
 		storage.DELETE("/trash/empty", emptyTrash)
+		storage.POST("/save", saveFile)
 	}
 }
 
@@ -588,6 +589,45 @@ func emptyTrash(c *gin.Context) {
 
 	// Recreate empty directory
 	os.MkdirAll(trashDir, 0755)
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// saveFile saves content to a file
+func saveFile(c *gin.Context) {
+	var req struct {
+		Path    string `json:"path"`
+		Content string `json:"content"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if req.Path == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Path required"})
+		return
+	}
+
+	// Check if file exists
+	info, err := os.Stat(req.Path)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File not found"})
+		return
+	}
+
+	if info.IsDir() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot save to directory"})
+		return
+	}
+
+	// Write content to file
+	err = os.WriteFile(req.Path, []byte(req.Content), info.Mode())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file: " + err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
