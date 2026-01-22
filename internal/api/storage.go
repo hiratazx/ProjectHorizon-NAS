@@ -2,11 +2,13 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -18,8 +20,18 @@ func RegisterStorageRoutes(rg *gin.RouterGroup) {
 		storage.GET("/disks", getDisks)
 		storage.GET("/usage", getFilesystemUsage)
 		storage.GET("/browse", browseDirectory)
+		storage.GET("/properties", getFileProperties)
+		storage.GET("/file", serveFile)
 		storage.POST("/mkdir", createDirectory)
+		storage.POST("/mkfile", createFile)
+		storage.POST("/copy", copyItem)
+		storage.POST("/move", moveItem)
+		storage.POST("/rename", renameItem)
 		storage.DELETE("/delete", deleteItem)
+		storage.POST("/trash", moveToTrash)
+		storage.GET("/trash", listTrash)
+		storage.POST("/trash/restore", restoreFromTrash)
+		storage.DELETE("/trash/empty", emptyTrash)
 	}
 }
 
@@ -232,4 +244,350 @@ func deleteItem(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "deleted": req.Path})
+}
+
+// File properties response
+type FileProperties struct {
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	IsDirectory bool   `json:"isDirectory"`
+	Size        int64  `json:"size"`
+	Modified    int64  `json:"modified"`
+	Created     int64  `json:"created"`
+	Permissions string `json:"permissions"`
+	MimeType    string `json:"mimeType"`
+	Extension   string `json:"extension"`
+}
+
+func getFileProperties(c *gin.Context) {
+	path := c.Query("path")
+	if path == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Path required"})
+		return
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+
+	ext := filepath.Ext(path)
+	mimeType := getMimeType(ext)
+
+	c.JSON(http.StatusOK, FileProperties{
+		Name:        info.Name(),
+		Path:        path,
+		IsDirectory: info.IsDir(),
+		Size:        info.Size(),
+		Modified:    info.ModTime().Unix(),
+		Created:     info.ModTime().Unix(), // Go doesn't have cross-platform birth time
+		Permissions: info.Mode().String(),
+		MimeType:    mimeType,
+		Extension:   ext,
+	})
+}
+
+func getMimeType(ext string) string {
+	mimeTypes := map[string]string{
+		".txt":  "text/plain",
+		".html": "text/html",
+		".css":  "text/css",
+		".js":   "application/javascript",
+		".json": "application/json",
+		".pdf":  "application/pdf",
+		".doc":  "application/msword",
+		".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		".xls":  "application/vnd.ms-excel",
+		".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		".png":  "image/png",
+		".jpg":  "image/jpeg",
+		".jpeg": "image/jpeg",
+		".gif":  "image/gif",
+		".svg":  "image/svg+xml",
+		".webp": "image/webp",
+		".mp3":  "audio/mpeg",
+		".wav":  "audio/wav",
+		".ogg":  "audio/ogg",
+		".mp4":  "video/mp4",
+		".webm": "video/webm",
+		".mkv":  "video/x-matroska",
+		".avi":  "video/x-msvideo",
+		".zip":  "application/zip",
+		".rar":  "application/x-rar-compressed",
+		".7z":   "application/x-7z-compressed",
+		".tar":  "application/x-tar",
+		".gz":   "application/gzip",
+	}
+	if mime, ok := mimeTypes[ext]; ok {
+		return mime
+	}
+	return "application/octet-stream"
+}
+
+func serveFile(c *gin.Context) {
+	path := c.Query("path")
+	if path == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Path required"})
+		return
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+
+	if info.IsDir() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot serve directory"})
+		return
+	}
+
+	c.File(path)
+}
+
+func createFile(c *gin.Context) {
+	var req struct {
+		Path    string `json:"path"`
+		Content string `json:"content"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if err := os.WriteFile(req.Path, []byte(req.Content), 0644); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "path": req.Path})
+}
+
+func copyItem(c *gin.Context) {
+	var req struct {
+		Source      string `json:"source"`
+		Destination string `json:"destination"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	info, err := os.Stat(req.Source)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Source not found"})
+		return
+	}
+
+	if info.IsDir() {
+		err = copyDir(req.Source, req.Destination)
+	} else {
+		err = copyFile(req.Source, req.Destination)
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func copyFile(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, data, 0644)
+}
+
+func copyDir(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, _ := filepath.Rel(src, path)
+		dstPath := filepath.Join(dst, relPath)
+
+		if info.IsDir() {
+			return os.MkdirAll(dstPath, info.Mode())
+		}
+
+		return copyFile(path, dstPath)
+	})
+}
+
+func moveItem(c *gin.Context) {
+	var req struct {
+		Source      string `json:"source"`
+		Destination string `json:"destination"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if err := os.Rename(req.Source, req.Destination); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func renameItem(c *gin.Context) {
+	var req struct {
+		Path    string `json:"path"`
+		NewName string `json:"newName"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	dir := filepath.Dir(req.Path)
+	newPath := filepath.Join(dir, req.NewName)
+
+	if err := os.Rename(req.Path, newPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "newPath": newPath})
+}
+
+// Recycle bin functions
+var trashDir = "config/recycle-bin"
+
+type TrashItem struct {
+	ID           string `json:"id"`
+	OriginalPath string `json:"originalPath"`
+	Name         string `json:"name"`
+	IsDirectory  bool   `json:"isDirectory"`
+	Size         int64  `json:"size"`
+	DeletedAt    int64  `json:"deletedAt"`
+}
+
+func moveToTrash(c *gin.Context) {
+	var req struct {
+		Path string `json:"path"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	info, err := os.Stat(req.Path)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+
+	// Create trash directory if needed
+	if err := os.MkdirAll(trashDir, 0755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Generate unique ID
+	id := filepath.Base(req.Path) + "_" + fmt.Sprintf("%d", time.Now().UnixNano())
+	trashPath := filepath.Join(trashDir, id)
+
+	// Move to trash
+	if err := os.Rename(req.Path, trashPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Save metadata
+	meta := TrashItem{
+		ID:           id,
+		OriginalPath: req.Path,
+		Name:         info.Name(),
+		IsDirectory:  info.IsDir(),
+		Size:         info.Size(),
+		DeletedAt:    time.Now().Unix(),
+	}
+	metaData, _ := json.Marshal(meta)
+	os.WriteFile(filepath.Join(trashDir, id+".meta"), metaData, 0644)
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "id": id})
+}
+
+func listTrash(c *gin.Context) {
+	entries, err := os.ReadDir(trashDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			c.JSON(http.StatusOK, []TrashItem{})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var items []TrashItem
+	for _, entry := range entries {
+		if filepath.Ext(entry.Name()) == ".meta" {
+			data, err := os.ReadFile(filepath.Join(trashDir, entry.Name()))
+			if err != nil {
+				continue
+			}
+			var item TrashItem
+			if json.Unmarshal(data, &item) == nil {
+				items = append(items, item)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, items)
+}
+
+func restoreFromTrash(c *gin.Context) {
+	var req struct {
+		ID string `json:"id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	metaPath := filepath.Join(trashDir, req.ID+".meta")
+	data, err := os.ReadFile(metaPath)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Item not found in trash"})
+		return
+	}
+
+	var item TrashItem
+	if err := json.Unmarshal(data, &item); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid metadata"})
+		return
+	}
+
+	trashPath := filepath.Join(trashDir, req.ID)
+
+	// Restore to original location
+	if err := os.Rename(trashPath, item.OriginalPath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Remove metadata
+	os.Remove(metaPath)
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "restored": item.OriginalPath})
+}
+
+func emptyTrash(c *gin.Context) {
+	if err := os.RemoveAll(trashDir); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Recreate empty directory
+	os.MkdirAll(trashDir, 0755)
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
