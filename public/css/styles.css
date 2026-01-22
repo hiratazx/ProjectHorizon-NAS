@@ -2610,3 +2610,52 @@ textarea,
 .path-input-group .btn {
     white-space: nowrap;
 }
+
+/* Version Bar */
+.version-bar {
+    position: fixed;
+    bottom: 0;
+    left: var(--sidebar-width);
+    right: 0;
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border-primary);
+    padding: 8px 24px;
+    z-index: 90;
+    font-size: 0.8125rem;
+}
+
+.version-bar-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.version-bar-text {
+    color: var(--warning);
+}
+
+.version-bar-separator {
+    color: var(--border-primary);
+}
+
+.version-bar-version {
+    color: var(--text-secondary);
+}
+
+.version-bar-version strong {
+    color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+    .version-bar {
+        left: 0;
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+
+    .version-bar-content {
+        gap: 8px;
+    }
+}
