@@ -12,6 +12,69 @@ let refreshInterval = null;
 let currentUser = null;
 
 // ============================================
+// Toast Notifications
+// ============================================
+
+function showToast(message, type = 'info', duration = 4000) {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const icons = {
+        success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+        info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        error: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.innerHTML = `
+        <span class="toast-icon ${type}">${icons[type] || icons.info}</span>
+        <span class="toast-message">${message}</span>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto remove after duration
+    setTimeout(() => {
+        toast.classList.add('toast-exit');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+}
+
+// ============================================
+// Update Detection
+// ============================================
+
+async function checkForUpdates() {
+    try {
+        // Get current build version
+        const versionData = await fetchAPI('/version');
+        const currentCommit = versionData.gitCommit;
+
+        if (currentCommit === 'unknown' || currentCommit === 'dev') {
+            return; // Skip check for dev builds
+        }
+
+        // Fetch latest commit from GitHub
+        const response = await fetch('https://api.github.com/repos/hiratazx/ProjectHorizon-NAS/commits/master', {
+            headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const latestCommit = data.sha.substring(0, 7);
+
+        if (latestCommit !== currentCommit) {
+            showToast(`Update available (${latestCommit})`, 'info', 8000);
+        }
+    } catch (error) {
+        console.log('Update check skipped:', error.message);
+    }
+}
+
+// ============================================
 // Initialization
 // ============================================
 
@@ -19,6 +82,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initAuthForms();
     initOnboarding();
     checkAuth();
+
+    // Check for updates after 5 seconds
+    setTimeout(checkForUpdates, 5000);
 });
 
 // Onboarding state
@@ -1323,17 +1389,35 @@ function closeMediaModal() {
     document.getElementById('mediaContent').innerHTML = '';
 }
 
+// Document viewer state
+let docEditPath = null;
+let docIsEditing = false;
+let docOriginalContent = '';
+
 async function openDocViewer(path, name, type) {
     document.getElementById('docTitle').textContent = name;
     const container = document.getElementById('docContent');
     const fileUrl = API_BASE + '/storage/file?path=' + encodeURIComponent(path);
+    const editBtn = document.getElementById('docEditBtn');
+    const saveBtn = document.getElementById('docSaveBtn');
+
+    docEditPath = path;
+    docIsEditing = false;
+
+    // Hide buttons initially
+    editBtn.style.display = 'none';
+    saveBtn.style.display = 'none';
 
     if (type === 'pdf') {
         container.innerHTML = `<iframe src="${fileUrl}"></iframe>`;
     } else {
+        // Text file - show edit button
+        editBtn.style.display = 'inline-flex';
+
         try {
             const response = await fetch(fileUrl, { headers: getAuthHeaders() });
             const text = await response.text();
+            docOriginalContent = text;
             container.innerHTML = `<pre>${escapeHtml(text)}</pre>`;
         } catch (error) {
             container.innerHTML = '<p style="color: var(--danger)">Failed to load file</p>';
@@ -1343,9 +1427,71 @@ async function openDocViewer(path, name, type) {
     document.getElementById('docModal').style.display = 'flex';
 }
 
+function toggleDocEdit() {
+    const container = document.getElementById('docContent');
+    const editBtn = document.getElementById('docEditBtn');
+    const saveBtn = document.getElementById('docSaveBtn');
+
+    if (docIsEditing) {
+        // Switch back to preview mode
+        const textarea = container.querySelector('textarea');
+        const text = textarea ? textarea.value : docOriginalContent;
+        container.innerHTML = `<pre>${escapeHtml(text)}</pre>`;
+        editBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Edit
+        `;
+        saveBtn.style.display = 'none';
+        docIsEditing = false;
+    } else {
+        // Switch to edit mode
+        const preContent = container.querySelector('pre')?.textContent || docOriginalContent;
+        container.innerHTML = `<textarea class="text-editor" style="width: 100%; height: 100%; min-height: 400px; resize: vertical; padding: 12px; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-primary); border-radius: var(--border-radius); font-family: 'Monaco', 'Menlo', monospace; font-size: 0.875rem; line-height: 1.6;">${escapeHtml(preContent)}</textarea>`;
+        editBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Preview
+        `;
+        saveBtn.style.display = 'inline-flex';
+        docIsEditing = true;
+    }
+}
+
+async function saveDocChanges() {
+    const container = document.getElementById('docContent');
+    const textarea = container.querySelector('textarea');
+
+    if (!textarea || !docEditPath) {
+        showToast('Nothing to save', 'warning');
+        return;
+    }
+
+    const content = textarea.value;
+
+    try {
+        await fetchAPI('/storage/save', {
+            method: 'POST',
+            body: JSON.stringify({ path: docEditPath, content })
+        });
+
+        docOriginalContent = content;
+        showToast('Changes saved', 'success');
+    } catch (error) {
+        showToast('Failed to save: ' + error.message, 'error');
+    }
+}
+
 function closeDocModal() {
     document.getElementById('docModal').style.display = 'none';
     document.getElementById('docContent').innerHTML = '';
+    docEditPath = null;
+    docIsEditing = false;
+    docOriginalContent = '';
 }
 
 function escapeHtml(text) {
