@@ -300,6 +300,7 @@ function navigateTo(page) {
         storage: 'Storage',
         docker: 'Containers',
         files: 'File Browser',
+        shares: 'File Sharing',
         network: 'Network',
         settings: 'Settings'
     };
@@ -325,6 +326,9 @@ function loadPageData(page) {
             break;
         case 'files':
             loadFilesPage();
+            break;
+        case 'shares':
+            loadSharesPage();
             break;
         case 'network':
             loadNetworkPage();
@@ -1040,6 +1044,333 @@ function updateBreadcrumb(path) {
 }
 
 // ============================================
+// Context Menu & File Operations
+// ============================================
+
+let clipboard = null; // { action: 'cut'|'copy', path: string, name: string }
+let contextTarget = null; // { path: string, name: string, isDirectory: boolean }
+
+// Hide context menu on click outside
+document.addEventListener('click', () => {
+    document.getElementById('contextMenu').style.display = 'none';
+});
+
+// Prevent default context menu and show custom one
+document.addEventListener('contextmenu', (e) => {
+    const fileItem = e.target.closest('.file-item');
+    const filesList = e.target.closest('.files-list');
+
+    if (fileItem && filesList) {
+        e.preventDefault();
+
+        // Get file info from data attributes or DOM
+        const fileName = fileItem.querySelector('.file-name')?.textContent;
+        if (fileName === '..' || fileName === 'Back to Volumes') return;
+
+        const isFolder = fileItem.querySelector('.file-icon.folder') !== null;
+        const path = fileItem.getAttribute('data-path') || (currentPath + '/' + fileName);
+
+        contextTarget = { path, name: fileName, isDirectory: isFolder };
+
+        // Update paste button state
+        const pasteItem = document.getElementById('pasteMenuItem');
+        if (pasteItem) pasteItem.style.opacity = clipboard ? '1' : '0.5';
+
+        // Show context menu
+        const menu = document.getElementById('contextMenu');
+        menu.style.display = 'block';
+        menu.style.left = e.pageX + 'px';
+        menu.style.top = e.pageY + 'px';
+
+        // Ensure menu stays in viewport
+        const rect = menu.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            menu.style.left = (e.pageX - rect.width) + 'px';
+        }
+        if (rect.bottom > window.innerHeight) {
+            menu.style.top = (e.pageY - rect.height) + 'px';
+        }
+    }
+});
+
+function contextCut() {
+    if (!contextTarget) return;
+    clipboard = { action: 'cut', path: contextTarget.path, name: contextTarget.name };
+    document.getElementById('contextMenu').style.display = 'none';
+}
+
+function contextCopy() {
+    if (!contextTarget) return;
+    clipboard = { action: 'copy', path: contextTarget.path, name: contextTarget.name };
+    document.getElementById('contextMenu').style.display = 'none';
+}
+
+async function contextPaste() {
+    if (!clipboard) return;
+    document.getElementById('contextMenu').style.display = 'none';
+
+    const destination = currentPath + '/' + clipboard.name;
+
+    try {
+        if (clipboard.action === 'copy') {
+            await fetchAPI('/storage/copy', {
+                method: 'POST',
+                body: JSON.stringify({ source: clipboard.path, destination })
+            });
+        } else {
+            await fetchAPI('/storage/move', {
+                method: 'POST',
+                body: JSON.stringify({ source: clipboard.path, destination })
+            });
+            clipboard = null;
+        }
+        refreshFiles();
+    } catch (error) {
+        alert('Paste failed: ' + error.message);
+    }
+}
+
+function contextRename() {
+    if (!contextTarget) return;
+    document.getElementById('contextMenu').style.display = 'none';
+
+    document.getElementById('renameInput').value = contextTarget.name;
+    document.getElementById('renameError').textContent = '';
+    document.getElementById('renameModal').style.display = 'flex';
+}
+
+async function contextDelete() {
+    if (!contextTarget) return;
+    document.getElementById('contextMenu').style.display = 'none';
+
+    if (!confirm(`Move "${contextTarget.name}" to Recycle Bin?`)) return;
+
+    try {
+        await fetchAPI('/storage/trash', {
+            method: 'POST',
+            body: JSON.stringify({ path: contextTarget.path })
+        });
+        refreshFiles();
+    } catch (error) {
+        alert('Delete failed: ' + error.message);
+    }
+}
+
+function contextOpen() {
+    if (!contextTarget) return;
+    document.getElementById('contextMenu').style.display = 'none';
+
+    if (contextTarget.isDirectory) {
+        loadFilesPage(contextTarget.path);
+    } else {
+        openFile(contextTarget.path, contextTarget.name);
+    }
+}
+
+function contextDownload() {
+    if (!contextTarget || contextTarget.isDirectory) return;
+    document.getElementById('contextMenu').style.display = 'none';
+
+    const link = document.createElement('a');
+    link.href = API_BASE + '/storage/file?path=' + encodeURIComponent(contextTarget.path);
+    link.download = contextTarget.name;
+    link.click();
+}
+
+async function contextProperties() {
+    if (!contextTarget) return;
+    document.getElementById('contextMenu').style.display = 'none';
+
+    document.getElementById('propertiesModal').style.display = 'flex';
+    document.getElementById('propertiesContent').innerHTML = '<div class="loading-spinner"></div>';
+
+    try {
+        const props = await fetchAPI('/storage/properties?path=' + encodeURIComponent(contextTarget.path));
+
+        document.getElementById('propertiesContent').innerHTML = `
+            <table class="properties-table">
+                <tr><td>Name</td><td>${props.name}</td></tr>
+                <tr><td>Type</td><td>${props.isDirectory ? 'Folder' : (props.mimeType || 'File')}</td></tr>
+                <tr><td>Path</td><td>${props.path}</td></tr>
+                <tr><td>Size</td><td>${props.isDirectory ? '--' : formatBytes(props.size)}</td></tr>
+                <tr><td>Modified</td><td>${new Date(props.modified * 1000).toLocaleString()}</td></tr>
+                <tr><td>Permissions</td><td><code>${props.permissions}</code></td></tr>
+            </table>
+        `;
+    } catch (error) {
+        document.getElementById('propertiesContent').innerHTML = '<p style="color: var(--danger)">Failed to load properties</p>';
+    }
+}
+
+function closePropertiesModal() {
+    document.getElementById('propertiesModal').style.display = 'none';
+}
+
+// File viewer functions
+function openFile(path, name) {
+    const ext = name.split('.').pop().toLowerCase();
+
+    const videoExts = ['mp4', 'webm', 'mkv', 'avi', 'mov'];
+    const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a'];
+    const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
+    const textExts = ['txt', 'md', 'json', 'js', 'css', 'html', 'xml', 'csv', 'log', 'sh', 'py', 'go', 'yaml', 'yml'];
+    const pdfExts = ['pdf'];
+
+    if (videoExts.includes(ext)) {
+        openMediaViewer(path, name, 'video');
+    } else if (audioExts.includes(ext)) {
+        openMediaViewer(path, name, 'audio');
+    } else if (imageExts.includes(ext)) {
+        openMediaViewer(path, name, 'image');
+    } else if (textExts.includes(ext)) {
+        openDocViewer(path, name, 'text');
+    } else if (pdfExts.includes(ext)) {
+        openDocViewer(path, name, 'pdf');
+    } else {
+        // Default: download
+        contextTarget = { path, name, isDirectory: false };
+        contextDownload();
+    }
+}
+
+function openMediaViewer(path, name, type) {
+    document.getElementById('mediaTitle').textContent = name;
+    const container = document.getElementById('mediaContent');
+    const fileUrl = API_BASE + '/storage/file?path=' + encodeURIComponent(path);
+
+    if (type === 'video') {
+        container.innerHTML = `<video controls autoplay><source src="${fileUrl}"></video>`;
+    } else if (type === 'audio') {
+        container.innerHTML = `<audio controls autoplay><source src="${fileUrl}"></audio>`;
+    } else if (type === 'image') {
+        container.innerHTML = `<img src="${fileUrl}" alt="${name}">`;
+    }
+
+    document.getElementById('mediaModal').style.display = 'flex';
+}
+
+function closeMediaModal() {
+    document.getElementById('mediaModal').style.display = 'none';
+    document.getElementById('mediaContent').innerHTML = '';
+}
+
+async function openDocViewer(path, name, type) {
+    document.getElementById('docTitle').textContent = name;
+    const container = document.getElementById('docContent');
+    const fileUrl = API_BASE + '/storage/file?path=' + encodeURIComponent(path);
+
+    if (type === 'pdf') {
+        container.innerHTML = `<iframe src="${fileUrl}"></iframe>`;
+    } else {
+        try {
+            const response = await fetch(fileUrl, { headers: getAuthHeaders() });
+            const text = await response.text();
+            container.innerHTML = `<pre>${escapeHtml(text)}</pre>`;
+        } catch (error) {
+            container.innerHTML = '<p style="color: var(--danger)">Failed to load file</p>';
+        }
+    }
+
+    document.getElementById('docModal').style.display = 'flex';
+}
+
+function closeDocModal() {
+    document.getElementById('docModal').style.display = 'none';
+    document.getElementById('docContent').innerHTML = '';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Rename form handler
+if (document.getElementById('renameForm')) {
+    document.getElementById('renameForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const newName = document.getElementById('renameInput').value.trim();
+        const errorDiv = document.getElementById('renameError');
+
+        if (!newName || !contextTarget) {
+            errorDiv.textContent = 'Invalid name';
+            return;
+        }
+
+        try {
+            await fetchAPI('/storage/rename', {
+                method: 'POST',
+                body: JSON.stringify({ path: contextTarget.path, newName })
+            });
+            closeRenameModal();
+            refreshFiles();
+        } catch (error) {
+            errorDiv.textContent = error.message;
+        }
+    });
+}
+
+function closeRenameModal() {
+    document.getElementById('renameModal').style.display = 'none';
+}
+
+// New file/folder creation
+let newItemType = 'folder';
+
+function showNewFolderModal() {
+    newItemType = 'folder';
+    document.getElementById('newItemTitle').textContent = 'New Folder';
+    document.getElementById('newItemName').value = '';
+    document.getElementById('newItemError').textContent = '';
+    document.getElementById('newItemModal').style.display = 'flex';
+}
+
+function showNewFileModal() {
+    newItemType = 'file';
+    document.getElementById('newItemTitle').textContent = 'New File';
+    document.getElementById('newItemName').value = '';
+    document.getElementById('newItemError').textContent = '';
+    document.getElementById('newItemModal').style.display = 'flex';
+}
+
+function closeNewItemModal() {
+    document.getElementById('newItemModal').style.display = 'none';
+}
+
+if (document.getElementById('newItemForm')) {
+    document.getElementById('newItemForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('newItemName').value.trim();
+        const errorDiv = document.getElementById('newItemError');
+
+        if (!name) {
+            errorDiv.textContent = 'Name required';
+            return;
+        }
+
+        const path = currentPath + '/' + name;
+
+        try {
+            if (newItemType === 'folder') {
+                await fetchAPI('/storage/mkdir', {
+                    method: 'POST',
+                    body: JSON.stringify({ path })
+                });
+            } else {
+                await fetchAPI('/storage/mkfile', {
+                    method: 'POST',
+                    body: JSON.stringify({ path, content: '' })
+                });
+            }
+            closeNewItemModal();
+            refreshFiles();
+        } catch (error) {
+            errorDiv.textContent = error.message;
+        }
+    });
+}
+
+// ============================================
 // Network Page
 // ============================================
 
@@ -1386,6 +1717,125 @@ async function deleteUser(id) {
         loadUsers();
     } catch (error) {
         alert('Failed to delete user: ' + error.message);
+    }
+}
+
+// ============================================
+// Shares Page
+// ============================================
+
+let currentShareType = 'smb';
+
+async function loadSharesPage() {
+    loadSharesList();
+}
+
+function switchShareTab(type) {
+    currentShareType = type;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(type));
+    });
+    loadSharesList();
+}
+
+async function loadSharesList() {
+    try {
+        const shares = await fetchAPI('/shares');
+        const container = document.getElementById('sharesList');
+
+        const filteredShares = (shares || []).filter(s => s.type === currentShareType);
+
+        if (filteredShares.length === 0) {
+            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 40px;">No ${currentShareType.toUpperCase()} shares found</p>`;
+            return;
+        }
+
+        container.innerHTML = filteredShares.map(share => `
+            <div class="share-card">
+                <div class="share-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                        <polyline points="16 6 12 2 8 6"/>
+                        <line x1="12" y1="2" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <div class="share-info">
+                    <div class="share-name">${share.name}</div>
+                    <div class="share-path">${share.path}</div>
+                    <div class="share-meta">
+                        <span class="share-badge">${share.readOnly ? 'Read-Only' : 'Read-Write'}</span>
+                        ${share.type === 'smb' && share.guestOk ? '<span class="share-badge">Guest OK</span>' : ''}
+                        ${share.type === 'nfs' && share.allowedIPs ? `<span class="share-badge" title="${share.allowedIPs}">IP Restricted</span>` : ''}
+                    </div>
+                </div>
+                <div class="share-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="deleteShare('${share.id}')">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Failed to load shares:', error);
+        document.getElementById('sharesList').innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Failed to load shares</p>';
+    }
+}
+
+function showAddShareModal() {
+    document.getElementById('shareModal').style.display = 'flex';
+    document.getElementById('shareForm').reset();
+    document.getElementById('shareError').textContent = '';
+    toggleShareFields();
+}
+
+function closeShareModal() {
+    document.getElementById('shareModal').style.display = 'none';
+}
+
+function toggleShareFields() {
+    const type = document.getElementById('shareType').value;
+    document.getElementById('smbFields').style.display = type === 'smb' ? 'block' : 'none';
+    document.getElementById('nfsFields').style.display = type === 'nfs' ? 'block' : 'none';
+}
+
+if (document.getElementById('shareForm')) {
+    document.getElementById('shareForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errorDiv = document.getElementById('shareError');
+        errorDiv.textContent = '';
+
+        const type = document.getElementById('shareType').value;
+        const data = {
+            type: type,
+            name: document.getElementById('shareName').value,
+            path: document.getElementById('sharePath').value,
+            readOnly: document.getElementById('shareReadOnly').checked,
+            guestOk: document.getElementById('shareGuestOk').checked,
+            allowedIPs: document.getElementById('shareAllowedIPs').value
+        };
+
+        try {
+            await fetchAPI('/shares', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            closeShareModal();
+            if (currentShareType !== type) {
+                switchShareTab(type);
+            } else {
+                loadSharesList();
+            }
+        } catch (error) {
+            errorDiv.textContent = error.message;
+        }
+    });
+}
+
+async function deleteShare(id) {
+    if (!confirm('Are you sure you want to delete this share?')) return;
+    try {
+        await fetchAPI(`/shares/${id}`, { method: 'DELETE' });
+        loadSharesList();
+    } catch (error) {
+        alert('Failed to delete share: ' + error.message);
     }
 }
 
