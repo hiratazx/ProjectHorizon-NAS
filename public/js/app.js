@@ -46,31 +46,131 @@ function showToast(message, type = 'info', duration = 4000) {
 // Update Detection
 // ============================================
 
+let appVersionInfo = null;
+
+async function loadVersionInfo() {
+    try {
+        appVersionInfo = await fetchAPI('/version');
+
+        // Update Dashboard version
+        const appVersionEl = document.getElementById('appVersion');
+        if (appVersionEl) {
+            appVersionEl.textContent = appVersionInfo.version;
+        }
+
+        // Update Settings version display
+        const currentVersionDisplay = document.getElementById('currentVersionDisplay');
+        const currentCommitDisplay = document.getElementById('currentCommitDisplay');
+        if (currentVersionDisplay) currentVersionDisplay.textContent = appVersionInfo.version;
+        if (currentCommitDisplay) currentCommitDisplay.textContent = appVersionInfo.gitCommit;
+
+        // Handle version bar based on version type
+        updateVersionBar(appVersionInfo);
+    } catch (error) {
+        console.log('Failed to load version info:', error.message);
+    }
+}
+
+function updateVersionBar(versionInfo) {
+    const versionBar = document.getElementById('versionBar');
+    const versionBarText = document.getElementById('versionBarText');
+    const versionBarVersion = document.getElementById('versionBarVersion');
+
+    if (!versionBar) return;
+
+    const versionType = versionInfo.versionType || 'dev';
+
+    // Hide for stable builds
+    if (versionType === 'stable') {
+        versionBar.style.display = 'none';
+        return;
+    }
+
+    // Show for dev, alpha, beta, preview
+    versionBar.style.display = 'block';
+    versionBarVersion.textContent = versionInfo.version;
+
+    switch (versionType) {
+        case 'alpha':
+            versionBarText.textContent = 'This is a Preview version and it may be unstable. Use it at your own risk';
+            break;
+        case 'beta':
+            versionBarText.textContent = 'This is a Beta version and it may contain bugs. Use with caution';
+            break;
+        case 'preview':
+            versionBarText.textContent = 'This is a Preview version and it may be unstable. Use it at your own risk';
+            break;
+        case 'dev':
+        default:
+            versionBarText.textContent = 'This is a Development build and it may be unstable. Use it at your own risk';
+            break;
+    }
+}
+
 async function checkForUpdates() {
     try {
-        // Get current build version
-        const versionData = await fetchAPI('/version');
-        const currentCommit = versionData.gitCommit;
+        if (!appVersionInfo) {
+            await loadVersionInfo();
+        }
+
+        const currentCommit = appVersionInfo?.gitCommit;
+        const versionType = appVersionInfo?.versionType;
 
         if (currentCommit === 'unknown' || currentCommit === 'dev') {
-            return; // Skip check for dev builds
+            return null; // Skip check for dev builds
         }
 
-        // Fetch latest commit from GitHub
-        const response = await fetch('https://api.github.com/repos/hiratazx/ProjectHorizon-NAS/commits/master', {
-            headers: { 'Accept': 'application/vnd.github.v3+json' }
-        });
+        // For tag builds (alpha, beta, stable), check releases
+        if (versionType && versionType !== 'dev') {
+            const response = await fetch('https://api.github.com/repos/hiratazx/ProjectHorizon-NAS/releases/latest', {
+                headers: { 'Accept': 'application/vnd.github.v3+json' }
+            });
 
-        if (!response.ok) return;
+            if (!response.ok) return null;
 
-        const data = await response.json();
-        const latestCommit = data.sha.substring(0, 7);
+            const data = await response.json();
+            const latestTag = data.tag_name;
 
-        if (latestCommit !== currentCommit) {
-            showToast(`Update available (${latestCommit})`, 'info', 8000);
+            if (latestTag !== appVersionInfo.version) {
+                return latestTag;
+            }
+        } else {
+            // For commit builds, check latest commit
+            const response = await fetch('https://api.github.com/repos/hiratazx/ProjectHorizon-NAS/commits/master', {
+                headers: { 'Accept': 'application/vnd.github.v3+json' }
+            });
+
+            if (!response.ok) return null;
+
+            const data = await response.json();
+            const latestCommit = data.sha.substring(0, 7);
+
+            if (latestCommit !== currentCommit) {
+                return latestCommit;
+            }
         }
+
+        return null;
     } catch (error) {
         console.log('Update check skipped:', error.message);
+        return null;
+    }
+}
+
+async function checkForUpdatesOnLoad() {
+    const update = await checkForUpdates();
+    if (update) {
+        showToast(`Update available (${update})`, 'info', 8000);
+    }
+}
+
+async function checkForUpdatesManual() {
+    showToast('Checking for updates...', 'info', 2000);
+    const update = await checkForUpdates();
+    if (update) {
+        showToast(`Update available: ${update}`, 'info', 8000);
+    } else {
+        showToast('You are running the latest version', 'success', 4000);
     }
 }
 
@@ -83,8 +183,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initOnboarding();
     checkAuth();
 
+    // Load version info after 2 seconds
+    setTimeout(loadVersionInfo, 2000);
+
     // Check for updates after 5 seconds
-    setTimeout(checkForUpdates, 5000);
+    setTimeout(checkForUpdatesOnLoad, 5000);
 });
 
 // Onboarding state
