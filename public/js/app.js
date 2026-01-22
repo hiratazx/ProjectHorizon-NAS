@@ -1443,9 +1443,10 @@ function closeOpenAsModal() {
 
 function openAsType(type) {
     if (!openAsTarget) return;
-    closeOpenAsModal();
 
+    // Save target before closing (closeOpenAsModal sets openAsTarget to null)
     const { path, name } = openAsTarget;
+    closeOpenAsModal();
 
     switch (type) {
         case 'text':
