@@ -12,6 +12,7 @@ import (
 )
 
 var Version = "dev"
+var GitCommit = "unknown"
 
 func main() {
 	port := os.Getenv("PORT")
@@ -39,6 +40,14 @@ func main() {
 		api.RegisterSettingsRoutes(apiGroup)
 		api.RegisterServicesRoutes(apiGroup)
 		api.RegisterSharesRoutes(apiGroup)
+
+		// Version endpoint for update detection
+		apiGroup.GET("/version", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"version":   Version,
+				"gitCommit": GitCommit,
+			})
+		})
 	}
 
 	// Serve static files - try multiple locations

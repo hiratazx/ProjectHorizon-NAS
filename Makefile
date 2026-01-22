@@ -3,6 +3,7 @@
 # Variables
 APP_NAME := horizon
 VERSION := 0.1.0
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DIR := build
 SYSROOT_DIR := $(BUILD_DIR)/sysroot
 INSTALL_PREFIX := /usr/local
@@ -11,7 +12,7 @@ SERVICE_NAME := projecthorizon
 # Go build settings
 GOOS := $(shell go env GOOS)
 GOARCH := $(shell go env GOARCH)
-LDFLAGS := -ldflags "-s -w -X main.Version=$(VERSION)"
+LDFLAGS := -ldflags "-s -w -X main.Version=$(VERSION) -X main.GitCommit=$(GIT_COMMIT)"
 
 # Default target
 all: build
