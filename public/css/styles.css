@@ -2143,3 +2143,171 @@ body {
     padding: 6px 12px;
     font-size: 0.875rem;
 }
+
+/* Open As Modal */
+.open-as-modal {
+    max-width: 500px;
+}
+
+.open-as-filename {
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.open-as-filename strong {
+    color: var(--text-primary);
+}
+
+.open-as-hint {
+    color: var(--text-tertiary);
+    font-size: 0.875rem;
+    margin-bottom: 20px;
+}
+
+.open-as-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.open-as-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.open-as-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-primary);
+}
+
+.open-as-btn svg {
+    width: 32px;
+    height: 32px;
+    color: var(--accent-primary);
+}
+
+.open-as-btn.open-as-download {
+    grid-column: span 2;
+    flex-direction: row;
+    justify-content: center;
+    background: var(--bg-secondary);
+}
+
+.open-as-btn.open-as-download svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Custom Themed Dropdown */
+.custom-select {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.custom-select select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    padding: 10px 36px 10px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.custom-select select:hover {
+    border-color: var(--accent-primary);
+}
+
+.custom-select select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.custom-select::after {
+    content: '';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid var(--text-secondary);
+    pointer-events: none;
+}
+
+/* Custom Themed Checkbox */
+.custom-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.custom-checkbox input[type="checkbox"] {
+    display: none;
+}
+
+.checkbox-mark {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-primary);
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    background: var(--bg-tertiary);
+}
+
+.custom-checkbox input:checked+.checkbox-mark {
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.checkbox-mark svg {
+    width: 14px;
+    height: 14px;
+    color: white;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.custom-checkbox input:checked+.checkbox-mark svg {
+    opacity: 1;
+}
+
+.custom-checkbox:hover .checkbox-mark {
+    border-color: var(--accent-primary);
+}
+
+/* Path Input with Browse Button */
+.path-input-group {
+    display: flex;
+    gap: 8px;
+}
+
+.path-input-group input {
+    flex: 1;
+}
+
+.path-input-group .btn {
+    white-space: nowrap;
+}
