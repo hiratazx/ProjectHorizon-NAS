@@ -75,6 +75,129 @@ body {
     overflow-x: hidden;
 }
 
+/* Disable selection highlight on UI elements (not text content) */
+.nav-item,
+.file-item,
+.btn,
+.menu-toggle,
+.sidebar,
+.header,
+.widget,
+.card,
+.volume-card,
+.context-menu-item,
+.tab-btn,
+.open-as-btn,
+.container-card,
+.service-card,
+.share-card,
+.toolbar-btn,
+.modal-close,
+.logo,
+svg,
+img {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Allow selection in text content areas */
+.doc-body pre,
+.doc-body textarea,
+input[type="text"],
+input[type="password"],
+textarea,
+.text-editor {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+/* Toast Notifications */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    color: var(--text-primary);
+    pointer-events: auto;
+    animation: toastSlideIn 0.3s ease forwards;
+    max-width: 360px;
+}
+
+.toast.toast-exit {
+    animation: toastSlideOut 0.3s ease forwards;
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes toastSlideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+.toast-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.toast-icon.success {
+    color: var(--success);
+}
+
+.toast-icon.info {
+    color: var(--accent-primary);
+}
+
+.toast-icon.warning {
+    color: var(--warning);
+}
+
+.toast-icon.error {
+    color: var(--danger);
+}
+
+.toast-message {
+    flex: 1;
+    font-size: 0.9375rem;
+}
+
 /* App Layout */
 .app {
     display: flex;
