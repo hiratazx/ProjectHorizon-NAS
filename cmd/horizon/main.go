@@ -13,6 +13,7 @@ import (
 
 var Version = "dev"
 var GitCommit = "unknown"
+var VersionType = "dev" // dev, alpha, beta, preview, stable
 
 func main() {
 	port := os.Getenv("PORT")
@@ -44,8 +45,9 @@ func main() {
 		// Version endpoint for update detection
 		apiGroup.GET("/version", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
-				"version":   Version,
-				"gitCommit": GitCommit,
+				"version":     Version,
+				"gitCommit":   GitCommit,
+				"versionType": VersionType,
 			})
 		})
 	}
