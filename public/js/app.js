@@ -1269,20 +1269,28 @@ document.addEventListener('contextmenu', (e) => {
         const pasteItem = document.getElementById('pasteMenuItem');
         if (pasteItem) pasteItem.style.opacity = clipboard ? '1' : '0.5';
 
-        // Show context menu
+        // Show context menu - use clientX/clientY for fixed positioning
         const menu = document.getElementById('contextMenu');
+        menu.style.position = 'fixed';
         menu.style.display = 'block';
-        menu.style.left = e.pageX + 'px';
-        menu.style.top = e.pageY + 'px';
+
+        // Calculate position
+        let x = e.clientX;
+        let y = e.clientY;
+
+        // Get menu dimensions after display
+        const rect = menu.getBoundingClientRect();
 
         // Ensure menu stays in viewport
-        const rect = menu.getBoundingClientRect();
-        if (rect.right > window.innerWidth) {
-            menu.style.left = (e.pageX - rect.width) + 'px';
+        if (x + rect.width > window.innerWidth) {
+            x = window.innerWidth - rect.width - 10;
         }
-        if (rect.bottom > window.innerHeight) {
-            menu.style.top = (e.pageY - rect.height) + 'px';
+        if (y + rect.height > window.innerHeight) {
+            y = window.innerHeight - rect.height - 10;
         }
+
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
     }
 });
 
