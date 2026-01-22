@@ -2656,6 +2656,21 @@ textarea,
     }
 
     .version-bar-content {
-        gap: 8px;
+        gap: 6px;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .version-bar-separator {
+        display: none;
+    }
+
+    .version-bar-text {
+        font-size: 0.6875rem;
+        line-height: 1.3;
+    }
+
+    .version-bar-version {
+        font-size: 0.625rem;
     }
 }
