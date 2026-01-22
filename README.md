@@ -86,23 +86,3 @@ docker build . -t hiratazx/projecthorizon
 | `GET /api/storage/usage` | Disk usage |
 | `GET /api/storage/browse?path=` | Browse files |
 
-## Configuration
-
-Edit `/etc/projecthorizon/config/storage.json` to configure storage volumes:
-
-```json
-{
-  "volumes": [
-    {
-      "name": "Main Storage",
-      "hostPath": "/home/user/data",
-      "mountPath": "/media",
-      "mode": "rw"
-    }
-  ]
-}
-```
-
-## License
-
-MIT
