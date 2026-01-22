@@ -34,3 +34,4 @@ Thumbs.db
 # Sensitive config files
 config/jwt.key
 config/users.json
+config/shares.json

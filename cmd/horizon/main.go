@@ -38,6 +38,7 @@ func main() {
 		api.RegisterStorageRoutes(apiGroup)
 		api.RegisterSettingsRoutes(apiGroup)
 		api.RegisterServicesRoutes(apiGroup)
+		api.RegisterSharesRoutes(apiGroup)
 	}
 
 	// Serve static files - try multiple locations
