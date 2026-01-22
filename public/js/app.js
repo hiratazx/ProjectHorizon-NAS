@@ -1583,6 +1583,25 @@ async function saveDocChanges() {
         });
 
         docOriginalContent = content;
+
+        // Update the preview with saved content (switch to preview mode)
+        container.innerHTML = `<pre>${escapeHtml(content)}</pre>`;
+
+        // Update button states
+        const editBtn = document.getElementById('docEditBtn');
+        const saveBtn = document.getElementById('docSaveBtn');
+        if (editBtn) {
+            editBtn.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Edit
+            `;
+        }
+        if (saveBtn) saveBtn.style.display = 'none';
+        docIsEditing = false;
+
         showToast('Changes saved', 'success');
     } catch (error) {
         showToast('Failed to save: ' + error.message, 'error');
@@ -1964,10 +1983,11 @@ function closeVolumeModal() {
 document.getElementById('volumeForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    const hostPath = document.getElementById('hostPath').value;
     const data = {
         name: document.getElementById('volumeName').value,
-        hostPath: document.getElementById('hostPath').value,
-        mountPath: document.getElementById('mountPath').value,
+        hostPath: hostPath,
+        mountPath: hostPath, // Use same path for NAS mounting
         mode: document.getElementById('volumeMode').value
     };
 
