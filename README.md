@@ -86,3 +86,6 @@ docker build . -t hiratazx/projecthorizon
 | `GET /api/storage/usage` | Disk usage |
 | `GET /api/storage/browse?path=` | Browse files |
 
+## License
+
+This project is licensed under the GPL-2.0 License - see the [LICENSE](LICENSE) file for details.
