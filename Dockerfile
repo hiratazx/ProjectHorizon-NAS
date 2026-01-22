@@ -1,5 +1,10 @@
 FROM golang:alpine AS builder
 
+# Build arguments
+ARG VERSION=dev
+ARG GIT_COMMIT=unknown
+ARG VERSION_TYPE=dev
+
 # Install build dependencies
 RUN apk add --no-cache make git bash
 
@@ -15,8 +20,8 @@ WORKDIR /app
 # Copy source code
 COPY . .
 
-# Build using Makefile
-RUN make build
+# Build using Makefile with version args
+RUN VERSION=${VERSION} GIT_COMMIT=${GIT_COMMIT} VERSION_TYPE=${VERSION_TYPE} make build
 
 # Install using Makefile (mocking system behavior)
 # Overriding INSTALL_PREFIX to /usr so binary goes to /usr/bin/horizon
