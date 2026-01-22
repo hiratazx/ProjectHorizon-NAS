@@ -85,7 +85,7 @@ jobs:
 
       - name: Upload artifacts (non-release)
         if: steps.version.outputs.is_release == 'false'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: horizon-${{ steps.version.outputs.version }}
           path: build/horizon-*
