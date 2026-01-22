@@ -741,6 +741,70 @@
                 </div>
             </div>
 
+            <!-- Open As Modal -->
+            <div class="modal-overlay" id="openAsModal" style="display: none;">
+                <div class="modal open-as-modal">
+                    <div class="modal-header">
+                        <h3>Open As</h3>
+                        <button class="modal-close" onclick="closeOpenAsModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="open-as-filename">File: <strong id="openAsFileName">unknown</strong></p>
+                        <p class="open-as-hint">This file type is not recognized. How would you like to open it?</p>
+                        <div class="open-as-options">
+                            <button class="open-as-btn" onclick="openAsType('text')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <line x1="16" y1="13" x2="8" y2="13" />
+                                    <line x1="16" y1="17" x2="8" y2="17" />
+                                </svg>
+                                <span>Text Document</span>
+                            </button>
+                            <button class="open-as-btn" onclick="openAsType('video')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="23 7 16 12 23 17 23 7" />
+                                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                                </svg>
+                                <span>Video</span>
+                            </button>
+                            <button class="open-as-btn" onclick="openAsType('audio')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M9 18V5l12-2v13" />
+                                    <circle cx="6" cy="18" r="3" />
+                                    <circle cx="18" cy="16" r="3" />
+                                </svg>
+                                <span>Audio</span>
+                            </button>
+                            <button class="open-as-btn" onclick="openAsType('image')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                    <circle cx="8.5" cy="8.5" r="1.5" />
+                                    <polyline points="21 15 16 10 5 21" />
+                                </svg>
+                                <span>Image</span>
+                            </button>
+                            <button class="open-as-btn" onclick="openAsType('pdf')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                    <path d="M9 9h6m-6 4h6m-6 4h4" />
+                                </svg>
+                                <span>PDF / Document</span>
+                            </button>
+                            <button class="open-as-btn open-as-download" onclick="openAsType('download')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
+                                <span>Download</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
             <!-- Shares Page -->
             <div class="page" id="page-shares">
@@ -904,31 +968,58 @@
             </div>
             <form id="shareForm">
                 <div class="form-group">
-                    <label for="shareType">Type</label>
-                    <select id="shareType" onchange="toggleShareFields()">
-                        <option value="smb">SMB (Windows/Mac)</option>
-                        <option value="nfs">NFS (Linux/Unix)</option>
-                    </select>
+                    <label for="shareType">Share Type</label>
+                    <div class="custom-select">
+                        <select id="shareType" onchange="toggleShareFields()">
+                            <option value="smb">SMB (Windows/Mac)</option>
+                            <option value="nfs">NFS (Linux/Unix)</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="shareName">Name</label>
                     <input type="text" id="shareName" required placeholder="public">
                 </div>
                 <div class="form-group">
-                    <label for="sharePath">Path</label>
-                    <input type="text" id="sharePath" required placeholder="/media/storage/public">
+                    <label for="shareVolume">Source Volume</label>
+                    <div class="custom-select">
+                        <select id="shareVolume" onchange="updateSharePath()">
+                            <option value="">-- Select Volume --</option>
+                        </select>
+                    </div>
                 </div>
+                <div class="form-group">
+                    <label for="shareFolderPath">Folder Path (optional)</label>
+                    <div class="path-input-group">
+                        <input type="text" id="shareFolderPath" placeholder="subfolder/path"
+                            oninput="updateSharePath()">
+                        <button type="button" class="btn btn-secondary" onclick="browseShareFolder()">Select</button>
+                    </div>
+                </div>
+                <input type="hidden" id="sharePath">
 
-                <div class="form-group checkbox-group">
-                    <label>
-                        <input type="checkbox" id="shareReadOnly"> Read Only
+                <div class="form-group">
+                    <label class="custom-checkbox">
+                        <input type="checkbox" id="shareReadOnly">
+                        <span class="checkbox-mark">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                        </span>
+                        <span>Read Only</span>
                     </label>
                 </div>
 
                 <div id="smbFields">
-                    <div class="form-group checkbox-group">
-                        <label>
-                            <input type="checkbox" id="shareGuestOk"> Allow Guest Access
+                    <div class="form-group">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="shareGuestOk">
+                            <span class="checkbox-mark">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            </span>
+                            <span>Allow Guest Access</span>
                         </label>
                     </div>
                 </div>
@@ -946,6 +1037,28 @@
                     <button type="submit" class="btn btn-primary">Create Share</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Folder Browser Modal -->
+    <div class="modal-overlay" id="folderBrowserModal" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Select Folder</h3>
+                <button class="modal-close" onclick="closeFolderBrowser()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="folder-browser-path" id="folderBrowserPath"
+                    style="font-family: monospace; padding: 8px; background: var(--bg-secondary); border-radius: var(--border-radius); margin-bottom: 12px;">
+                </div>
+                <div class="folder-browser-list" id="folderBrowserList" style="max-height: 300px; overflow-y: auto;">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 16px;">
+                <button class="btn btn-secondary" onclick="closeFolderBrowser()">Cancel</button>
+                <button class="btn btn-primary" onclick="selectBrowsedFolder()">Select This Folder</button>
+            </div>
         </div>
     </div>
 
