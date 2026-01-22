@@ -3,7 +3,7 @@
     {
       "id": "",
       "name": "Main Storage",
-      "hostPath": "/media/files",
+      "hostPath": "/media",
       "mountPath": "/media",
       "mode": "rw"
     }
