@@ -341,6 +341,10 @@
                                     <span class="info-label">Architecture</span>
                                     <span class="info-value" id="systemArch">--</span>
                                 </div>
+                                <div class="info-item">
+                                    <span class="info-label">ProjectHorizon</span>
+                                    <span class="info-value" id="appVersion">--</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -866,6 +870,33 @@
             <!-- Settings Page -->
             <div class="page" id="page-settings">
                 <div class="page-content">
+                    <!-- Updates Section -->
+                    <div class="card" style="margin-bottom: 24px;">
+                        <div class="card-header">
+                            <h2>Updates</h2>
+                            <button class="btn btn-secondary" onclick="checkForUpdatesManual()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10" />
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                                </svg>
+                                Check for Updates
+                            </button>
+                        </div>
+                        <div class="updates-info" style="padding: 16px;">
+                            <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+                                <div>
+                                    <span style="color: var(--text-secondary);">Current Version:</span>
+                                    <strong id="currentVersionDisplay">--</strong>
+                                </div>
+                                <div>
+                                    <span style="color: var(--text-secondary);">Build:</span>
+                                    <span id="currentCommitDisplay">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Volumes Section -->
                     <div class="card" style="margin-bottom: 24px;">
                         <div class="card-header">
@@ -908,6 +939,16 @@
                 </div>
             </div>
         </main>
+
+        <!-- Version Bar (hidden for stable builds) -->
+        <footer class="version-bar" id="versionBar" style="display: none;">
+            <div class="version-bar-content">
+                <span class="version-bar-text" id="versionBarText">This is a Preview version and it may be unstable. Use
+                    it at your own risk</span>
+                <span class="version-bar-separator">|</span>
+                <span class="version-bar-version">Version: <strong id="versionBarVersion">--</strong></span>
+            </div>
+        </footer>
     </div>
 
     <!-- Add Volume Modal -->
