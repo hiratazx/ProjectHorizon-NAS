@@ -7,8 +7,7 @@ toolchain go1.24.12
 require (
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/gin-gonic/gin v1.11.0
-	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/google/uuid v1.6.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/shirou/gopsutil/v3 v3.24.5
 	golang.org/x/crypto v0.47.0
 )
